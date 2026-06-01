@@ -115,17 +115,24 @@ export default function PacingDashboard() {
   // Headline numbers: use current position (not a milestone)
   const headline = useMemo(() => {
     if (!currentToday || !peers.length) return null;
-    const d = currentToday.d;
-    const peerVals = peers.map(p => lookupAt(p.series, d)).filter(Boolean);
+    // Walk back from the current show's last day to find the latest d where peers have data
+    let d = currentToday.d;
+    let peerVals = peers.map(p => lookupAt(p.series, d)).filter(Boolean);
+    while (!peerVals.length && d > -400) {
+      d--;
+      peerVals = peers.map(p => lookupAt(p.series, d)).filter(Boolean);
+    }
     if (!peerVals.length) return null;
+    const cPt = lookupAt(current.series, d);
+    if (!cPt) return null;
     const peerMed = median(peerVals.map(v => v.c));
     const peerMedPct = median(peerVals.map(v => v.p));
-    const delta = peerMed ? ((currentToday.c - peerMed) / peerMed) * 100 : null;
+    const delta = peerMed ? ((cPt.c - peerMed) / peerMed) * 100 : null;
     const projection = peerMedPct && peerMedPct > 0
-      ? Math.round(currentToday.c / (peerMedPct / 100)) : null;
+      ? Math.round(cPt.c / (peerMedPct / 100)) : null;
     const peerMedFinal = median(peers.map(p => p.final));
-    return { d, currentTix: currentToday.c, peerMed, delta, projection, peerMedFinal, peerN: peerVals.length };
-  }, [currentToday, peers]);
+    return { d, currentTix: cPt.c, peerMed, delta, projection, peerMedFinal, peerN: peerVals.length };
+  }, [currentToday, peers, current]);
 
   // Chart data: per-day series with current, peer median, peer 25/75 band
   const chartData = useMemo(() => {
