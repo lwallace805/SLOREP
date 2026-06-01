@@ -377,6 +377,57 @@ export default function PacingDashboard() {
           </div>
         </div>
 
+        {/* Peer list */}
+        <div style={{ background: "#FFFFFF", border: "1px solid #E8E2D5", borderRadius: 6, padding: "8px 20px 20px", marginBottom: 22 }}>
+          <div style={{ padding: "14px 0 10px" }}>
+            <div style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "#8B7E68" }}>
+              Peer reference
+            </div>
+            <div className="serif" style={{ fontSize: 18, fontWeight: 600, marginTop: 2 }}>
+              Shows included in this comparison
+            </div>
+          </div>
+          {peers.length === 0 ? (
+            <div style={{ fontSize: 13, color: "#8B7E68", padding: "8px 0" }}>No peers match the current filter selection.</div>
+          ) : (
+            <table className="ms">
+              <thead>
+                <tr>
+                  <th className="lbl">Show</th>
+                  <th className="lbl">Category</th>
+                  <th className="lbl">Season</th>
+                  <th>Opening</th>
+                  <th>Capacity</th>
+                  <th>Final tickets</th>
+                  <th>Sell-through</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...peers].sort((a, b) => b.open.localeCompare(a.open)).map(p => {
+                  const sellThrough = p.final && p.cap ? (p.final / p.cap * 100).toFixed(1) + "%" : "—";
+                  const cat = CATEGORIES[p.cat];
+                  return (
+                    <tr key={p.name}>
+                      <td className="lbl" style={{ fontWeight: 500 }}>{p.name}{p.inProgress ? <span style={{ marginLeft: 6, fontSize: 10, color: "#B45309", background: "#FEF3C7", padding: "1px 5px", borderRadius: 3, fontWeight: 600, letterSpacing: "0.05em" }}>IN PROGRESS</span> : ""}</td>
+                      <td className="lbl">
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: cat.color, flexShrink: 0 }} />
+                          {cat.label}
+                        </span>
+                      </td>
+                      <td className="lbl mono" style={{ color: "#6B6052" }}>{p.season}</td>
+                      <td className="mono" style={{ color: "#6B6052" }}>{p.open}</td>
+                      <td className="mono">{p.cap?.toLocaleString()}</td>
+                      <td className="mono" style={{ fontWeight: 600 }}>{p.final?.toLocaleString()}</td>
+                      <td className="mono" style={{ color: "#6B6052" }}>{sellThrough}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
         {/* Methodology */}
         <div style={{ padding: 16, background: "#F5F1E8", border: "1px solid #E8E2D5", borderRadius: 4, fontSize: 12, color: "#6B6052", lineHeight: 1.55 }}>
           <div style={{ fontWeight: 600, color: "#1A1A1A", marginBottom: 6 }}>How to read this</div>
