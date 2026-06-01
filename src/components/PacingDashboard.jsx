@@ -117,6 +117,7 @@ export default function PacingDashboard() {
     if (!currentToday || !peers.length) return null;
     const d = currentToday.d;
     const peerVals = peers.map(p => lookupAt(p.series, d)).filter(Boolean);
+    if (!peerVals.length) return null;
     const peerMed = median(peerVals.map(v => v.c));
     const peerMedPct = median(peerVals.map(v => v.p));
     const delta = peerMed ? ((currentToday.c - peerMed) / peerMed) * 100 : null;
