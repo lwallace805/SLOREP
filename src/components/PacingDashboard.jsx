@@ -392,26 +392,66 @@ export default function PacingDashboard() {
               Peer reference
             </div>
             <div className="serif" style={{ fontSize: 18, fontWeight: 600, marginTop: 2 }}>
-              Shows included in this comparison
+              This show vs peers in this comparison
             </div>
           </div>
-          {peers.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#8B7E68", padding: "8px 0" }}>No peers match the current filter selection.</div>
-          ) : (
-            <table className="ms">
-              <thead>
-                <tr>
-                  <th className="lbl">Show</th>
-                  <th className="lbl">Category</th>
-                  <th className="lbl">Season</th>
-                  <th>Opening</th>
-                  <th>Capacity</th>
-                  <th>Final tickets</th>
-                  <th>Sell-through</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...peers].sort((a, b) => b.open.localeCompare(a.open)).map(p => {
+          <table className="ms">
+            <thead>
+              <tr>
+                <th className="lbl">Show</th>
+                <th className="lbl">Category</th>
+                <th className="lbl">Season</th>
+                <th>Opening</th>
+                <th>Capacity</th>
+                <th>Tickets</th>
+                <th>% of cap</th>
+                <th>Projected sell-through</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Current show row */}
+              {(() => {
+                const currentTix = currentToday ? currentToday.c : current.final;
+                const currentCapPct = current.cap ? (currentTix / current.cap * 100).toFixed(1) + "%" : "—";
+                const projectedFinal = headline && headline.projection ? headline.projection : null;
+                const projectedPct = projectedFinal && current.cap
+                  ? (projectedFinal / current.cap * 100).toFixed(1) + "%"
+                  : current.inProgress ? "—" : (current.final && current.cap ? (current.final / current.cap * 100).toFixed(1) + "%" : "—");
+                const cat = CATEGORIES[current.cat];
+                return (
+                  <tr style={{ background: "#F5F1E8" }}>
+                    <td className="lbl" style={{ fontWeight: 700 }}>
+                      {current.name}
+                      <span style={{ marginLeft: 6, fontSize: 10, color: "#1A1A1A", background: "#D9D2C5", padding: "1px 5px", borderRadius: 3, fontWeight: 600, letterSpacing: "0.05em" }}>THIS SHOW</span>
+                      {current.inProgress && <span style={{ marginLeft: 4, fontSize: 10, color: "#B45309", background: "#FEF3C7", padding: "1px 5px", borderRadius: 3, fontWeight: 600, letterSpacing: "0.05em" }}>IN PROGRESS</span>}
+                    </td>
+                    <td className="lbl">
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: cat.color, flexShrink: 0 }} />
+                        {cat.label}
+                      </span>
+                    </td>
+                    <td className="lbl mono" style={{ color: "#6B6052" }}>{current.season}</td>
+                    <td className="mono" style={{ color: "#6B6052" }}>{current.open}</td>
+                    <td className="mono">{current.cap?.toLocaleString()}</td>
+                    <td className="mono" style={{ fontWeight: 600 }}>
+                      {currentTix.toLocaleString()}
+                      {current.inProgress && currentToday && <span style={{ fontWeight: 400, color: "#8B7E68", fontSize: 11, marginLeft: 4 }}>now</span>}
+                    </td>
+                    <td className="mono" style={{ color: "#6B6052" }}>{currentCapPct}</td>
+                    <td className="mono" style={{ fontWeight: 600, color: projectedFinal ? "#0F766E" : "#6B6052" }}>
+                      {projectedFinal ? "~" + projectedPct : projectedPct}
+                    </td>
+                  </tr>
+                );
+              })()}
+              {/* Divider */}
+              <tr><td colSpan={8} style={{ padding: 0, borderBottom: "2px solid #D9D2C5" }} /></tr>
+              {/* Peer rows */}
+              {peers.length === 0 ? (
+                <tr><td colSpan={8} style={{ color: "#8B7E68", fontSize: 13, padding: "10px 12px" }}>No peers match the current filter selection.</td></tr>
+              ) : (
+                [...peers].sort((a, b) => b.open.localeCompare(a.open)).map(p => {
                   const sellThrough = p.final && p.cap ? (p.final / p.cap * 100).toFixed(1) + "%" : "—";
                   const cat = CATEGORIES[p.cat];
                   return (
@@ -428,12 +468,13 @@ export default function PacingDashboard() {
                       <td className="mono">{p.cap?.toLocaleString()}</td>
                       <td className="mono" style={{ fontWeight: 600 }}>{p.final?.toLocaleString()}</td>
                       <td className="mono" style={{ color: "#6B6052" }}>{sellThrough}</td>
+                      <td className="mono" style={{ color: "#BBB1A0" }}>—</td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          )}
+                })
+              )}
+            </tbody>
+          </table>
         </div>
 
         {/* Methodology */}
