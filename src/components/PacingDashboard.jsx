@@ -77,18 +77,35 @@ export default function PacingDashboard() {
   const getLiveSeries = (show) => {
     if (!show.inProgress) return show.series;
     const live = liveData[show.name];
-    if (!live) return show.series;
+    if (!live || live.c <= 0) return show.series; // ignore zero / error responses
+    // Sanity check: sold count should never decrease
+    const lastPt = show.series[show.series.length - 1];
+    if (lastPt && live.c < lastPt.c) return show.series;
     const p = show.cap > 0 ? Math.round(live.c / show.cap * 1000) / 10 : 0;
     const series = show.series.filter(pt => pt.d < live.d);
     return [...series, { d: live.d, c: live.c, p }];
   };
 
+  // Track which shows actually have live data applied (sanity check passed)
+  const liveApplied = useMemo(() => {
+    const applied = {};
+    DATA.forEach(show => {
+      if (!show.inProgress) return;
+      const live = liveData[show.name];
+      if (!live || live.c <= 0) return;
+      const lastPt = show.series[show.series.length - 1];
+      if (lastPt && live.c < lastPt.c) return;
+      applied[show.name] = true;
+    });
+    return applied;
+  }, [liveData]);
+
   // Build a version of DATA with live series merged in
   const liveDATA = useMemo(() => DATA.map(show => ({
     ...show,
     series: getLiveSeries(show),
-    final: show.inProgress && liveData[show.name] ? liveData[show.name].c : show.final,
-  })), [liveData]);
+    final: liveApplied[show.name] ? liveData[show.name].c : show.final,
+  })), [liveData, liveApplied]);
 
   const current = liveDATA.find(s => s.name === currentName) || liveDATA[0];
 
@@ -244,7 +261,7 @@ export default function PacingDashboard() {
               {currentToday !== null && (
                 <span> · <span className="mono">{currentToday.d <= 0 ? `${Math.abs(currentToday.d)}d out` : `+${currentToday.d}d`}</span> today · {current.cap?.toLocaleString()} capacity</span>
               )}
-              {current.inProgress && liveData[current.name] && (
+              {current.inProgress && liveApplied[current.name] && (
                 <span style={{ marginLeft: 8 }}>
                   <span style={{ fontSize: 10, background: "#ECFDF5", color: "#065F46", padding: "1px 6px", borderRadius: 10, fontWeight: 600, border: "1px solid #A7F3D0", letterSpacing: "0.04em" }}>
                     ● LIVE
