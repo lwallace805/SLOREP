@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Area, ComposedChart
@@ -56,13 +56,47 @@ export default function PacingDashboard() {
     return DATA[DATA.length - 1].name;
   }, []);
   const [currentName, setCurrentName] = useState(defaultCurrent);
-  const current = DATA.find(s => s.name === currentName);
+
+  // Live Spektrix data: {showName: {d, c}} for all shows
+  const [liveData, setLiveData] = useState({});
+  const [liveUpdatedAt, setLiveUpdatedAt] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/live-pacing')
+      .then(r => r.json())
+      .then(data => {
+        if (!data.error) {
+          setLiveData(data);
+          setLiveUpdatedAt(new Date());
+        }
+      })
+      .catch(() => {}); // silent — fall back to static data
+  }, []);
+
+  // Merge live data into a show's series for in-progress shows
+  const getLiveSeries = (show) => {
+    if (!show.inProgress) return show.series;
+    const live = liveData[show.name];
+    if (!live) return show.series;
+    const p = show.cap > 0 ? Math.round(live.c / show.cap * 1000) / 10 : 0;
+    const series = show.series.filter(pt => pt.d < live.d);
+    return [...series, { d: live.d, c: live.c, p }];
+  };
+
+  // Build a version of DATA with live series merged in
+  const liveDATA = useMemo(() => DATA.map(show => ({
+    ...show,
+    series: getLiveSeries(show),
+    final: show.inProgress && liveData[show.name] ? liveData[show.name].c : show.final,
+  })), [liveData]);
+
+  const current = liveDATA.find(s => s.name === currentName) || liveDATA[0];
 
   const [peerCats, setPeerCats] = useState(new Set([current.cat]));
   const [peerSeasons, setPeerSeasons] = useState(new Set(["22-23", "23-24", "24-25", "25-26"]));
   const [excludeInProgress, setExcludeInProgress] = useState(true);
 
-  const peers = useMemo(() => DATA.filter(s =>
+  const peers = useMemo(() => liveDATA.filter(s =>
     s.name !== currentName
     && peerCats.has(s.cat)
     && peerSeasons.has(s.season)
@@ -160,7 +194,7 @@ export default function PacingDashboard() {
   const toggleCat = c => { const n = new Set(peerCats); n.has(c) ? n.delete(c) : n.add(c); setPeerCats(n); };
   const toggleSeason = s => { const n = new Set(peerSeasons); n.has(s) ? n.delete(s) : n.add(s); setPeerSeasons(n); };
 
-  const sortedShows = [...DATA].sort((a, b) => b.open.localeCompare(a.open));
+  const sortedShows = [...liveDATA].sort((a, b) => b.open.localeCompare(a.open));
   const catColor = CATEGORIES[current.cat].color;
 
   return (
@@ -198,7 +232,7 @@ export default function PacingDashboard() {
         {/* Selectors */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 22 }}>
           <Panel title="This show">
-            <select value={currentName} onChange={e => { const s = DATA.find(x => x.name === e.target.value); setCurrentName(e.target.value); setPeerCats(new Set([s.cat])); }} style={selectStyle}>
+            <select value={currentName} onChange={e => { const s = liveDATA.find(x => x.name === e.target.value); setCurrentName(e.target.value); setPeerCats(new Set([s.cat])); }} style={selectStyle}>
               {sortedShows.map(s => (
                 <option key={s.name} value={s.name}>
                   {s.name} · {s.season} · {CATEGORIES[s.cat].label}{s.inProgress ? " · IN PROGRESS" : ""}
@@ -209,6 +243,18 @@ export default function PacingDashboard() {
               <span className="mono">Opens {current.open}</span>
               {currentToday !== null && (
                 <span> · <span className="mono">{currentToday.d <= 0 ? `${Math.abs(currentToday.d)}d out` : `+${currentToday.d}d`}</span> today · {current.cap?.toLocaleString()} capacity</span>
+              )}
+              {current.inProgress && liveData[current.name] && (
+                <span style={{ marginLeft: 8 }}>
+                  <span style={{ fontSize: 10, background: "#ECFDF5", color: "#065F46", padding: "1px 6px", borderRadius: 10, fontWeight: 600, border: "1px solid #A7F3D0", letterSpacing: "0.04em" }}>
+                    ● LIVE
+                  </span>
+                  {liveUpdatedAt && (
+                    <span style={{ marginLeft: 6, color: "#8B7E68" }}>
+                      updated {liveUpdatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  )}
+                </span>
               )}
             </div>
           </Panel>
