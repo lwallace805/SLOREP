@@ -73,29 +73,27 @@ export default function PacingDashboard() {
       .catch(() => {}); // silent — fall back to static data
   }, []);
 
-  // Merge live data into a show's series for in-progress shows
+  // Merge live data into a show's series for in-progress shows.
+  // Uses max(live.c, lastStaticPt.c) so the count never goes backwards,
+  // but the d-value always advances to today's position.
   const getLiveSeries = (show) => {
     if (!show.inProgress) return show.series;
     const live = liveData[show.name];
-    if (!live || live.c <= 0) return show.series; // ignore zero / error responses
-    // Sanity check: sold count should never decrease
+    if (!live || live.c <= 0) return show.series;
     const lastPt = show.series[show.series.length - 1];
-    if (lastPt && live.c < lastPt.c) return show.series;
-    const p = show.cap > 0 ? Math.round(live.c / show.cap * 1000) / 10 : 0;
+    const c = Math.max(live.c, lastPt ? lastPt.c : 0);
+    const p = show.cap > 0 ? Math.round(c / show.cap * 1000) / 10 : 0;
     const series = show.series.filter(pt => pt.d < live.d);
-    return [...series, { d: live.d, c: live.c, p }];
+    return [...series, { d: live.d, c, p }];
   };
 
-  // Track which shows actually have live data applied (sanity check passed)
+  // Live badge shows whenever we have a valid API response (c > 0)
   const liveApplied = useMemo(() => {
     const applied = {};
     DATA.forEach(show => {
       if (!show.inProgress) return;
       const live = liveData[show.name];
-      if (!live || live.c <= 0) return;
-      const lastPt = show.series[show.series.length - 1];
-      if (lastPt && live.c < lastPt.c) return;
-      applied[show.name] = true;
+      if (live && live.c > 0) applied[show.name] = true;
     });
     return applied;
   }, [liveData]);
@@ -104,7 +102,7 @@ export default function PacingDashboard() {
   const liveDATA = useMemo(() => DATA.map(show => ({
     ...show,
     series: getLiveSeries(show),
-    final: liveApplied[show.name] ? liveData[show.name].c : show.final,
+    final: liveApplied[show.name] ? Math.max(liveData[show.name].c, show.final) : show.final,
   })), [liveData, liveApplied]);
 
   const current = liveDATA.find(s => s.name === currentName) || liveDATA[0];
