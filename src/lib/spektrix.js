@@ -53,13 +53,18 @@ export async function getEvents() {
 /**
  * Get per-instance availability for an event.
  * Returns [{dt, sold, cap, pct}] sorted by dt asc.
+ *
+ * Spektrix wraps the response in {data: [...]} — we unwrap it here.
  */
 export async function getInstanceAvailability(eventId) {
-  const data = await spektrixGet(
+  const raw = await spektrixGet(
     `/events/${eventId}/availability?start_from=2015-01-01&start_to=2030-12-31`
   );
 
-  if (!Array.isArray(data)) return [];
+  // Unwrap {data: [...]} wrapper if present, otherwise expect a plain array
+  const data = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
+
+  if (!data.length) return [];
 
   return data
     .map((inst) => {
