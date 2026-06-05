@@ -9,11 +9,12 @@ import {
 import { DATA } from '@/data/pacingData';
 
 const CATEGORIES = {
-  revue: { label: "Musical Revue", color: "#D97706" },
-  book_musical: { label: "Book musical", color: "#0F766E" },
-  drama: { label: "Drama", color: "#475569" },
-  comedy: { label: "Comedy", color: "#B91C1C" },
-  holiday: { label: "Holiday", color: "#15803D" },
+  revue:        { label: "Musical Revue",        color: "#D97706" },
+  book_musical: { label: "Book Musical",          color: "#0F766E" },
+  drama:        { label: "Drama",                 color: "#475569" },
+  comedy:       { label: "Comedy",                color: "#B91C1C" },
+  holiday:      { label: "Holiday",               color: "#15803D" },
+  ubu:          { label: "Ubu's Other Shoe",       color: "#7C3AED" },
 };
 
 // Per-category projection calibration derived from backtest of all completed shows.
@@ -27,6 +28,7 @@ const PROJ_CALIBRATION = {
   comedy:       { bias: 0.086, mape: 0.189 },
   book_musical: { bias: 0.160, mape: 0.371 },
   holiday:      { bias: 0.381, mape: 0.524 }, // high mape — small sample
+  ubu:          { bias: 0.050, mape: 0.200 }, // Ubu's Other Shoe — small studio, limited data
 };
 
 // Recent seasons for drama/comedy weighting (last 2 seasons penalise stale comps)
@@ -152,7 +154,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
   const current = liveDATA.find(s => s.name === currentName) || liveDATA[0];
 
   const [peerCats, setPeerCats] = useState(new Set([current.cat]));
-  const [peerSeasons, setPeerSeasons] = useState(new Set(["22-23", "23-24", "24-25", "25-26"]));
+  const [peerSeasons, setPeerSeasons] = useState(new Set(["22-23", "23-24", "24-25", "25-26", "26-27"]));
   const [excludeInProgress, setExcludeInProgress] = useState(true);
 
   const peers = useMemo(() => liveDATA.filter(s =>
@@ -267,7 +269,15 @@ export default function PacingDashboard({ initialLiveData = {} }) {
   const toggleSeason = s => { const n = new Set(peerSeasons); n.has(s) ? n.delete(s) : n.add(s); setPeerSeasons(n); };
 
   const sortedShows = [...liveDATA].sort((a, b) => b.open.localeCompare(a.open));
-  const catColor = CATEGORIES[current.cat].color;
+  const catColor = CATEGORIES[current.cat]?.color || "#8B7E68";
+
+  // Compute today's date string for past/upcoming labels
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const showStatus = (s) => {
+    if (s.inProgress) return "In Progress";
+    if (s.open > todayStr) return "Upcoming";
+    return "Past";
+  };
 
   return (
     <div style={{ background: "#FAF8F4", minHeight: "100vh", fontFamily: "'Inter Tight', system-ui, sans-serif", color: "#1A1A1A" }}>
@@ -307,7 +317,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
             <select value={currentName} onChange={e => { const s = liveDATA.find(x => x.name === e.target.value); setCurrentName(e.target.value); setPeerCats(new Set([s.cat])); }} style={selectStyle}>
               {sortedShows.map(s => (
                 <option key={s.name} value={s.name}>
-                  {s.name} · {s.season} · {CATEGORIES[s.cat].label}{s.inProgress ? " · IN PROGRESS" : ""}
+                  {s.name} · {s.season} · {CATEGORIES[s.cat]?.label || s.cat} · {showStatus(s)}
                 </option>
               ))}
             </select>
@@ -338,7 +348,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
               ))}
             </div>
             <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
-              {["22-23", "23-24", "24-25", "25-26"].map(s => (
+              {["22-23", "23-24", "24-25", "25-26", "26-27"].map(s => (
                 <Chip key={s} active={peerSeasons.has(s)} onClick={() => toggleSeason(s)}>{s}</Chip>
               ))}
               <label style={{ marginLeft: 8, fontSize: 11, color: "#6B6052", display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
