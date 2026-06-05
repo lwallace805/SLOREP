@@ -4,6 +4,20 @@ import { getEvents } from '@/lib/spektrix';
 
 export const dynamic = 'force-dynamic';
 
+// SLO Rep is in Pacific Time. Use the theater's local calendar date
+// so d-values match what the team sees on the wall, not the UTC clock.
+function getPacificDateString() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date()); // returns YYYY-MM-DD
+}
+
+function pacificDateToUtcMs(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+
 function spektrixSign(method, url) {
   const date = new Date().toUTCString();
   const sig = crypto
@@ -70,21 +84,16 @@ export async function GET(request) {
     const fromMs = Date.UTC(by, bm - 1, bd) + 86400000; // baseline + 1 day
     const fromDate = new Date(fromMs).toISOString().slice(0, 10);
 
-    // Use UTC date for "today" to be consistent with the d-value calculation
-    const nowUtc = new Date();
-    const toDate = new Date(Date.UTC(
-      nowUtc.getUTCFullYear(),
-      nowUtc.getUTCMonth(),
-      nowUtc.getUTCDate()
-    )).toISOString().slice(0, 10);
+    // Use Pacific Time for "today" — SLO Rep's local calendar date.
+    // Prevents d flipping to 0 (opening) at 5 PM Pacific when UTC crosses midnight.
+    const todayPacific = getPacificDateString(); // YYYY-MM-DD in Pacific time
 
-    const delta = await countTicketsForEvent(event.id, fromDate, toDate);
+    const delta = await countTicketsForEvent(event.id, fromDate, todayPacific);
 
-    // d-value: days from opening, using UTC dates throughout
-    const [oy, om, od] = openDate.split('-').map(Number);
-    const openUtcMs = Date.UTC(oy, om - 1, od);
-    const nowUtcMs  = Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate());
-    const d = Math.round((nowUtcMs - openUtcMs) / 86400000);
+    // d-value: Pacific calendar days from opening
+    const openUtcMs   = pacificDateToUtcMs(openDate);
+    const todayUtcMs  = pacificDateToUtcMs(todayPacific);
+    const d = Math.round((todayUtcMs - openUtcMs) / 86400000);
 
     return NextResponse.json({ d, c: baselineCount + delta, delta, baselineCount });
   } catch (err) {
