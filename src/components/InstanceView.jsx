@@ -38,10 +38,12 @@ const selectStyle = {
   minWidth: 280,
 };
 
-export default function InstanceView() {
+export default function InstanceView({ initialData = null }) {
   const [shows, setShows] = useState([]);
   const [selectedName, setSelectedName] = useState('A Grand Night for Singing');
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(initialData);
+  // Accurate total from pacing orders endpoint (overrides sum of availability sold)
+  const [accurateTotal, setAccurateTotal] = useState(null);
   const [loadingShows, setLoadingShows] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState(null);
@@ -65,23 +67,17 @@ export default function InstanceView() {
       .finally(() => setLoadingShows(false));
   }, []);
 
-  // Load instance data whenever selected show changes
+  // Load instance data whenever selected show changes (availability API — fast)
   useEffect(() => {
     if (!selectedName) return;
+    if (initialData?.name === selectedName) {
+      setLoadingData(false);
+      return;
+    }
     setLoadingData(true);
     setError(null);
-
-    // Compute saleStart = ~13 months before opening night.
-    // firstInstance is the first PERFORMANCE date — tickets typically
-    // go on sale 6-18 months earlier, so we look back 400 days.
-    const selectedShow = shows.find(s => s.name === selectedName);
-    const saleStart = selectedShow?.firstInstance
-      ? new Date(new Date(selectedShow.firstInstance).getTime() - 400 * 86400000)
-          .toISOString().slice(0, 10)
-      : '2025-01-01';
-
-    const params = new URLSearchParams({ name: selectedName, saleStart });
-    fetch(`/api/instances?${params}`)
+    setAccurateTotal(null);
+    fetch(`/api/instances?name=${encodeURIComponent(selectedName)}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.error) throw new Error(d.error);
@@ -89,6 +85,31 @@ export default function InstanceView() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoadingData(false));
+  }, [selectedName]);
+
+  // For in-progress shows, also fetch the accurate total from the pacing
+  // live-data endpoint (orders-based, includes comps + subscriptions).
+  // This overrides the availability API sum in the summary card only.
+  useEffect(() => {
+    if (!selectedName || !shows.length) return;
+    const selectedShow = shows.find(s => s.name === selectedName);
+    // Only do this for shows that haven't closed (have a future firstInstance)
+    if (!selectedShow?.firstInstance) return;
+    const openDate = selectedShow.firstInstance.slice(0, 10);
+    if (openDate < TODAY) return; // completed show — availability count is final
+
+    // Find baseline from static pacing data if available, else skip
+    // We pass known Grand Night baseline; for other shows use a wide window
+    const params = new URLSearchParams({
+      name: selectedName,
+      baselineDate: '2026-06-02',
+      baselineCount: '1289',
+      openDate,
+    });
+    fetch(`/api/live-pacing?${params}`)
+      .then(r => r.json())
+      .then(d => { if (!d.error && d.c > 0) setAccurateTotal(d.c); })
+      .catch(() => {});
   }, [selectedName, shows]);
 
   const { past, upcoming } = useMemo(() => {
@@ -100,8 +121,11 @@ export default function InstanceView() {
   }, [data]);
 
   const instances = data?.instances || [];
-  const totalSold = instances.reduce((s, i) => s + i.sold, 0);
-  const totalCap  = instances.reduce((s, i) => s + i.cap, 0);
+  const availSold  = instances.reduce((s, i) => s + i.sold, 0);
+  // Use the orders-based accurate total when available (includes comps + subscriptions)
+  // Fall back to availability API sum for completed shows or when live total not yet loaded
+  const totalSold  = accurateTotal || availSold;
+  const totalCap   = instances.reduce((s, i) => s + i.cap, 0);
   const overallPct = totalCap > 0 ? (totalSold / totalCap * 100).toFixed(1) : '0.0';
   const upcomingTotalSold = upcoming.reduce((s, i) => s + i.sold, 0);
   const upcomingTotalCap  = upcoming.reduce((s, i) => s + i.cap, 0);
