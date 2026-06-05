@@ -562,7 +562,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
                       ? `${(projLow/current.cap*100).toFixed(0)}–${Math.min(100,(projHigh/current.cap*100)).toFixed(0)}%`
                       : (projectedFinal/current.cap*100).toFixed(1)+"%")
                   : current.inProgress ? "—" : (current.final && current.cap ? (current.final/current.cap*100).toFixed(1)+"%" : "—");
-                const cat = CATEGORIES[current.cat];
+                const cat = CATEGORIES[current.cat] || { label: current.cat, color: "#8B7E68" };
                 return (
                   <tr style={{ background: "#F5F1E8" }}>
                     <td className="lbl" style={{ fontWeight: 700 }}>
@@ -598,7 +598,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
               ) : (
                 [...peers].sort((a, b) => b.open.localeCompare(a.open)).map(p => {
                   const sellThrough = p.final && p.cap ? (p.final / p.cap * 100).toFixed(1) + "%" : "—";
-                  const cat = CATEGORIES[p.cat];
+                  const cat = CATEGORIES[p.cat] || { label: p.cat, color: "#8B7E68" };
                   return (
                     <tr key={p.name}>
                       <td className="lbl" style={{ fontWeight: 500 }}>{p.name}{p.inProgress ? <span style={{ marginLeft: 6, fontSize: 10, color: "#B45309", background: "#FEF3C7", padding: "1px 5px", borderRadius: 3, fontWeight: 600, letterSpacing: "0.05em" }}>IN PROGRESS</span> : ""}</td>
