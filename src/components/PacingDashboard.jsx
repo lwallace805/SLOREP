@@ -71,10 +71,11 @@ export default function PacingDashboard() {
     Promise.all(inProgress.map(show => {
       const lastPt = show.series[show.series.length - 1];
       // Compute the calendar date of the last series point
-      const open = new Date(show.open + 'T00:00:00');
-      const baselineDate = new Date(open);
-      baselineDate.setDate(baselineDate.getDate() + lastPt.d);
-      const baseDateStr = baselineDate.toISOString().slice(0, 10);
+      // Use UTC arithmetic to avoid local-timezone shifts
+      const [oy, om, od] = show.open.split('-').map(Number);
+      const openUtcMs = Date.UTC(oy, om - 1, od);
+      const baselineUtcMs = openUtcMs + lastPt.d * 86400000;
+      const baseDateStr = new Date(baselineUtcMs).toISOString().slice(0, 10);
 
       const params = new URLSearchParams({
         name: show.name,

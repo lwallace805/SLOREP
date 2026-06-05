@@ -107,12 +107,14 @@ export async function GET(request) {
       page++;
     }
 
-    // Compute today's d-value from opening date
-    const open = new Date(openDate);
-    open.setHours(0, 0, 0, 0);
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const d = Math.round((now - open) / 86400000);
+    // Compute today's d-value using UTC dates throughout.
+    // new Date('YYYY-MM-DD') is UTC midnight, so we compare UTC date parts
+    // to avoid timezone shifts making d=0 a day early on UTC servers.
+    const [oy, om, od] = openDate.split('-').map(Number);
+    const openUtcMs = Date.UTC(oy, om - 1, od);
+    const nowUtc = new Date();
+    const nowUtcMs = Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate());
+    const d = Math.round((nowUtcMs - openUtcMs) / 86400000);
 
     const c = baselineCount + delta;
 
