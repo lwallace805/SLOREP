@@ -53,6 +53,56 @@ async function countOrderTickets(eventId, fromDate, toDate) {
 }
 
 /**
+ * Fetch all orders for an event and return per-instance ticket counts.
+ * Queries month-by-month to stay within Spektrix's response limits.
+ * Returns { [instanceId]: count }
+ */
+export async function getPerInstanceCounts(eventId, saleStartDate) {
+  const today = getPacificDateString();
+  const [sy, sm] = saleStartDate.split('-').map(Number);
+  const [ty, tm] = today.split('-').map(Number);
+
+  // Build monthly ranges from sale start to today
+  const months = [];
+  let cy = sy, cm = sm;
+  while (cy < ty || (cy === ty && cm <= tm)) {
+    const lastDay = new Date(cy, cm, 0).getDate();
+    months.push({
+      from: `${cy}-${String(cm).padStart(2,'0')}-01`,
+      to:   `${cy}-${String(cm).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`,
+    });
+    cm++; if (cm > 12) { cm = 1; cy++; }
+  }
+
+  const base = `https://system.spektrix.com/${process.env.SPEKTRIX_CLIENT_NAME}/api/v3`;
+  const counts = {};
+
+  // Fetch months in parallel, each with internal pagination
+  await Promise.all(months.map(async ({ from, to }) => {
+    let page = 1;
+    while (true) {
+      const url = `${base}/orders?DateFrom=${from}&DateTo=${to}&page=${page}&pageSize=200`;
+      const res = await fetch(url, { headers: spektrixSign('GET', url) });
+      if (!res.ok || !(res.headers.get('content-type') || '').includes('json')) break;
+      const orders = await res.json();
+      if (!Array.isArray(orders) || orders.length === 0) break;
+      for (const order of orders) {
+        for (const t of order.tickets || []) {
+          if (t.event?.id === eventId) {
+            const iid = t.instance?.id;
+            if (iid) counts[iid] = (counts[iid] || 0) + 1;
+          }
+        }
+      }
+      if (orders.length < 200) break;
+      page++;
+    }
+  }));
+
+  return counts;
+}
+
+/**
  * For each in-progress show in the provided list, fetch the live current count.
  * Returns { [showName]: { d, c } }
  *

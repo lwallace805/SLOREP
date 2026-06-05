@@ -39,9 +39,9 @@ const selectStyle = {
 };
 
 export default function InstanceView() {
-  const [shows, setShows] = useState([]);       // list of all show names
+  const [shows, setShows] = useState([]);
   const [selectedName, setSelectedName] = useState('A Grand Night for Singing');
-  const [data, setData] = useState(null);       // {name, instances}
+  const [data, setData] = useState(null);
   const [loadingShows, setLoadingShows] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState(null);
@@ -70,7 +70,16 @@ export default function InstanceView() {
     if (!selectedName) return;
     setLoadingData(true);
     setError(null);
-    fetch(`/api/instances?name=${encodeURIComponent(selectedName)}`)
+
+    // Pass the show's first-instance date as saleStart so the backend
+    // knows how far back to scan orders for committed seats
+    const selectedShow = shows.find(s => s.name === selectedName);
+    const saleStart = selectedShow?.firstInstance
+      ? selectedShow.firstInstance.slice(0, 10)
+      : '2024-06-01';
+
+    const params = new URLSearchParams({ name: selectedName, saleStart });
+    fetch(`/api/instances?${params}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.error) throw new Error(d.error);
@@ -78,7 +87,7 @@ export default function InstanceView() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoadingData(false));
-  }, [selectedName]);
+  }, [selectedName, shows]);
 
   const { past, upcoming } = useMemo(() => {
     const instances = data?.instances || [];
