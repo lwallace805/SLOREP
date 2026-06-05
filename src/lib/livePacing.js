@@ -77,27 +77,31 @@ export async function getPerInstanceCounts(eventId, saleStartDate) {
   const base = `https://system.spektrix.com/${process.env.SPEKTRIX_CLIENT_NAME}/api/v3`;
   const counts = {};
 
-  // Fetch months in parallel, each with internal pagination
-  await Promise.all(months.map(async ({ from, to }) => {
-    let page = 1;
-    while (true) {
-      const url = `${base}/orders?DateFrom=${from}&DateTo=${to}&page=${page}&pageSize=200`;
-      const res = await fetch(url, { headers: spektrixSign('GET', url) });
-      if (!res.ok || !(res.headers.get('content-type') || '').includes('json')) break;
-      const orders = await res.json();
-      if (!Array.isArray(orders) || orders.length === 0) break;
-      for (const order of orders) {
-        for (const t of order.tickets || []) {
-          if (t.event?.id === eventId) {
-            const iid = t.instance?.id;
-            if (iid) counts[iid] = (counts[iid] || 0) + 1;
+  // Fetch in batches of 4 months at a time to avoid overwhelming Spektrix API.
+  // All 25+ months in parallel causes rate-limiting / timeouts.
+  const BATCH = 4;
+  for (let i = 0; i < months.length; i += BATCH) {
+    await Promise.all(months.slice(i, i + BATCH).map(async ({ from, to }) => {
+      let page = 1;
+      while (true) {
+        const url = `${base}/orders?DateFrom=${from}&DateTo=${to}&page=${page}&pageSize=200`;
+        const res = await fetch(url, { headers: spektrixSign('GET', url) });
+        if (!res.ok || !(res.headers.get('content-type') || '').includes('json')) break;
+        const orders = await res.json();
+        if (!Array.isArray(orders) || orders.length === 0) break;
+        for (const order of orders) {
+          for (const t of order.tickets || []) {
+            if (t.event?.id === eventId) {
+              const iid = t.instance?.id;
+              if (iid) counts[iid] = (counts[iid] || 0) + 1;
+            }
           }
         }
+        if (orders.length < 200) break;
+        page++;
       }
-      if (orders.length < 200) break;
-      page++;
-    }
-  }));
+    }));
+  }
 
   return counts;
 }

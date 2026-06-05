@@ -71,12 +71,14 @@ export default function InstanceView() {
     setLoadingData(true);
     setError(null);
 
-    // Pass the show's first-instance date as saleStart so the backend
-    // knows how far back to scan orders for committed seats
+    // Compute saleStart = ~13 months before opening night.
+    // firstInstance is the first PERFORMANCE date — tickets typically
+    // go on sale 6-18 months earlier, so we look back 400 days.
     const selectedShow = shows.find(s => s.name === selectedName);
     const saleStart = selectedShow?.firstInstance
-      ? selectedShow.firstInstance.slice(0, 10)
-      : '2024-06-01';
+      ? new Date(new Date(selectedShow.firstInstance).getTime() - 400 * 86400000)
+          .toISOString().slice(0, 10)
+      : '2025-01-01';
 
     const params = new URLSearchParams({ name: selectedName, saleStart });
     fetch(`/api/instances?${params}`)

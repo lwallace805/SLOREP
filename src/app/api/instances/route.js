@@ -5,7 +5,7 @@ import { getPerInstanceCounts } from '@/lib/livePacing';
 // Dynamic because it reads query params, but responses are meaningful to cache
 export const dynamic = 'force-dynamic';
 
-const ORDERS_TIMEOUT_MS = 12000; // fall back to availability API after 12s
+const ORDERS_TIMEOUT_MS = 25000; // fall back to availability API after 25s
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
