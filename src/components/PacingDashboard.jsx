@@ -7,6 +7,7 @@ import {
 } from "recharts";
 
 import { DATA } from '@/data/pacingData';
+import TicketMixBar from './TicketMixBar';
 
 const CATEGORIES = {
   revue:        { label: "Musical Revue",        color: "#D97706" },
@@ -400,6 +401,9 @@ export default function PacingDashboard({ initialLiveData = {} }) {
             />
           </div>
         )}
+
+        {/* Ticket mix bar — shown for in-progress shows */}
+        {current.inProgress && <TicketMixBar showName={current.name} />}
 
         {/* Milestone table */}
         <div style={{ background: "#FFFFFF", border: "1px solid #E8E2D5", borderRadius: 6, padding: "8px 20px 20px", marginBottom: 22 }}>
