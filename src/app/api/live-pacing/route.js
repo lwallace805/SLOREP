@@ -97,7 +97,9 @@ export async function GET(request) {
 
       for (const order of orders) {
         for (const t of order.tickets || []) {
-          if (t.event?.id === event.id && t.originalPrice > 0) {
+          // Count all committed seats: paid tickets, comps (price=0),
+          // and subscription allocations — any seat assigned to this event
+          if (t.event?.id === event.id) {
             delta++;
           }
         }
