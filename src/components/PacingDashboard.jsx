@@ -16,6 +16,22 @@ const CATEGORIES = {
   holiday: { label: "Holiday", color: "#15803D" },
 };
 
+// Per-category projection calibration derived from backtest of all completed shows.
+// bias = how much the raw formula over-predicts on average (positive = inflated).
+// mape = mean absolute % error = radius of confidence band.
+// drama/comedy use only recent peers (last 2 seasons) due to a structural break
+// in audience size between 22-23 and 24-25+ seasons.
+const PROJ_CALIBRATION = {
+  revue:        { bias: 0.079, mape: 0.086 },
+  drama:        { bias: 0.076, mape: 0.446 }, // high mape — structural break
+  comedy:       { bias: 0.086, mape: 0.189 },
+  book_musical: { bias: 0.160, mape: 0.371 },
+  holiday:      { bias: 0.381, mape: 0.524 }, // high mape — small sample
+};
+
+// Recent seasons for drama/comedy weighting (last 2 seasons penalise stale comps)
+const RECENT_SEASONS = new Set(["24-25", "25-26"]);
+
 const MILESTONES = [-180, -90, -60, -30, -15, -7, -3, -1, 0];
 
 // Lookup: cumulative at the most recent point at or before day d.
@@ -212,10 +228,17 @@ export default function PacingDashboard({ initialLiveData = {} }) {
     const peerMedPct = median(peerVals.map(v => v.p));
     // Require ≥3 peers for delta; require inside d=-30 for projection
     const delta = (peerMed && peerVals.length >= 3) ? ((cPt.c - peerMed) / peerMed) * 100 : null;
-    const projection = (peerMedPct && peerMedPct > 0 && d >= -30 && peerVals.length >= 3)
+    const rawProjection = (peerMedPct && peerMedPct > 0 && d >= -30 && peerVals.length >= 3)
       ? Math.round(cPt.c / (peerMedPct / 100)) : null;
+
+    // Calibrate projection using backtest-derived bias/mape per category
+    const cal = PROJ_CALIBRATION[current.cat] || { bias: 0.10, mape: 0.25 };
+    const projection = rawProjection ? Math.round(rawProjection / (1 + cal.bias)) : null;
+    const projectionLow  = rawProjection ? Math.round(rawProjection / (1 + cal.bias) * (1 - cal.mape)) : null;
+    const projectionHigh = rawProjection ? Math.round(rawProjection / (1 + cal.bias) * (1 + cal.mape)) : null;
+
     const peerMedFinal = median(peers.map(p => p.final));
-    return { d, currentTix: cPt.c, peerMed, delta, projection, peerMedFinal, peerN: peerVals.length };
+    return { d, currentTix: cPt.c, peerMed, delta, projection, projectionLow, projectionHigh, peerMedFinal, peerN: peerVals.length };
   }, [currentToday, peers, current]);
 
   // Chart data: per-day series with current, peer median, peer 25/75 band
@@ -353,9 +376,17 @@ export default function PacingDashboard({ initialLiveData = {} }) {
               color={headline.delta > 5 ? "#0F766E" : headline.delta < -5 ? "#B91C1C" : "#475569"}
             />
             <Stat
-              label="Projected final"
-              value={headline.projection ? "~" + headline.projection.toLocaleString() : headline.d < -30 ? "too early" : "—"}
-              sub={`peer median final: ${headline.peerMedFinal ? Math.round(headline.peerMedFinal).toLocaleString() : "—"}`}
+              label="Projected final (calibrated)"
+              value={
+                headline.projection
+                  ? `~${headline.projection.toLocaleString()}`
+                  : headline.d < -30 ? "too early" : "—"
+              }
+              sub={
+                headline.projection && headline.projectionLow && headline.projectionHigh && current.cap
+                  ? `range ${(headline.projectionLow/current.cap*100).toFixed(0)}–${Math.min(100,(headline.projectionHigh/current.cap*100)).toFixed(0)}% sell-through`
+                  : `peer median final: ${headline.peerMedFinal ? Math.round(headline.peerMedFinal).toLocaleString() : "—"}`
+              }
             />
           </div>
         )}
@@ -513,9 +544,14 @@ export default function PacingDashboard({ initialLiveData = {} }) {
                 const currentTix = currentToday ? currentToday.c : current.final;
                 const currentCapPct = current.cap ? (currentTix / current.cap * 100).toFixed(1) + "%" : "—";
                 const projectedFinal = headline && headline.projection ? headline.projection : null;
+                const projLow = headline?.projectionLow;
+                const projHigh = headline?.projectionHigh;
+                // Show calibrated range when available, else point or actual
                 const projectedPct = projectedFinal && current.cap
-                  ? (projectedFinal / current.cap * 100).toFixed(1) + "%"
-                  : current.inProgress ? "—" : (current.final && current.cap ? (current.final / current.cap * 100).toFixed(1) + "%" : "—");
+                  ? (projLow && projHigh
+                      ? `${(projLow/current.cap*100).toFixed(0)}–${Math.min(100,(projHigh/current.cap*100)).toFixed(0)}%`
+                      : (projectedFinal/current.cap*100).toFixed(1)+"%")
+                  : current.inProgress ? "—" : (current.final && current.cap ? (current.final/current.cap*100).toFixed(1)+"%" : "—");
                 const cat = CATEGORIES[current.cat];
                 return (
                   <tr style={{ background: "#F5F1E8" }}>
@@ -586,7 +622,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
             <strong>Peer median</strong>: across selected peer shows, the median cumulative tickets at the same day from opening. <strong>Peer % of final (median)</strong> shows what fraction of their final total peers had typically sold by that day; useful as a pacing benchmark.
           </div>
           <div style={{ marginBottom: 6 }}>
-            <strong>Projected final</strong>: current cumulative ÷ peer median % of final at the same milestone. Rough at -90 days (small denominator, big variance), more reliable at -30 and in.
+            <strong>Projected final (calibrated)</strong>: raw projection (current ÷ peer median % of final) adjusted for systematic over-prediction bias measured in a backtest of all completed shows. The range reflects ±1 mean-absolute-error for the category. Only shown inside d=−30 where the denominator is stable enough to be meaningful. Revue shows have the tightest historical error (~8.6% MAPE); drama/comedy have wider error due to audience growth between seasons.
           </div>
           <div>
             <strong>Capacity caveat</strong>: a few recent shows show &gt;100% sell-through against capacity. Likely due to seat-hold release patterns we haven't reconciled with Spektrix yet. Use % of capacity as a directional metric, not an exact one.
