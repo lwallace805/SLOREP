@@ -42,8 +42,11 @@ export default function InstanceView({ initialData = null }) {
   const [shows, setShows] = useState([]);
   const [selectedName, setSelectedName] = useState('A Grand Night for Singing');
   const [data, setData] = useState(initialData);
-  // Accurate total from pacing orders endpoint (overrides sum of availability sold)
-  const [accurateTotal, setAccurateTotal] = useState(null);
+  // Accurate total (orders-based, includes comps + subscriptions).
+  // Pre-populated from server ISR so no flash on default show.
+  const [accurateTotal, setAccurateTotal] = useState(
+    initialData?.accurateTotal ?? null
+  );
   const [loadingShows, setLoadingShows] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState(null);
@@ -87,19 +90,15 @@ export default function InstanceView({ initialData = null }) {
       .finally(() => setLoadingData(false));
   }, [selectedName]);
 
-  // For in-progress shows, also fetch the accurate total from the pacing
-  // live-data endpoint (orders-based, includes comps + subscriptions).
-  // This overrides the availability API sum in the summary card only.
+  // For in-progress shows, fetch the accurate total from the pacing endpoint.
+  // Skip if server already provided it via initialData.accurateTotal.
   useEffect(() => {
     if (!selectedName || !shows.length) return;
+    if (initialData?.name === selectedName && initialData?.accurateTotal != null) return;
     const selectedShow = shows.find(s => s.name === selectedName);
-    // Only do this for shows that haven't closed (have a future firstInstance)
     if (!selectedShow?.firstInstance) return;
     const openDate = selectedShow.firstInstance.slice(0, 10);
-    if (openDate < TODAY) return; // completed show — availability count is final
-
-    // Find baseline from static pacing data if available, else skip
-    // We pass known Grand Night baseline; for other shows use a wide window
+    if (openDate < TODAY) return;
     const params = new URLSearchParams({
       name: selectedName,
       baselineDate: '2026-06-02',

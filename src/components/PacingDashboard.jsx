@@ -168,8 +168,13 @@ export default function PacingDashboard({ initialLiveData = {} }) {
       const peerMedFinal = median(peerFinals);
       const peerMedCapPct = median(peerCapPct);
 
-      const delta = cPt && peerMedTix ? ((cPt.c - peerMedTix) / peerMedTix) * 100 : null;
-      const projection = cPt && peerMedPct && peerMedPct > 0
+      // Only show delta/projection when ≥3 peers have data at this milestone.
+      // Fewer peers = too noisy to be meaningful (one outlier dominates).
+      const MIN_PEERS = 3;
+      const delta = (cPt && peerMedTix && peerData.length >= MIN_PEERS)
+        ? ((cPt.c - peerMedTix) / peerMedTix) * 100 : null;
+      // Only project within 30 days of opening — denominator is too small before that.
+      const projection = (cPt && peerMedPct && peerMedPct > 0 && d >= -30 && peerData.length >= MIN_PEERS)
         ? Math.round(cPt.c / (peerMedPct / 100)) : null;
 
       // Determine if this milestone is "today" for the current show (closest past or current)
@@ -205,8 +210,9 @@ export default function PacingDashboard({ initialLiveData = {} }) {
     if (!cPt) return null;
     const peerMed = median(peerVals.map(v => v.c));
     const peerMedPct = median(peerVals.map(v => v.p));
-    const delta = peerMed ? ((cPt.c - peerMed) / peerMed) * 100 : null;
-    const projection = peerMedPct && peerMedPct > 0
+    // Require ≥3 peers for delta; require inside d=-30 for projection
+    const delta = (peerMed && peerVals.length >= 3) ? ((cPt.c - peerMed) / peerMed) * 100 : null;
+    const projection = (peerMedPct && peerMedPct > 0 && d >= -30 && peerVals.length >= 3)
       ? Math.round(cPt.c / (peerMedPct / 100)) : null;
     const peerMedFinal = median(peers.map(p => p.final));
     return { d, currentTix: cPt.c, peerMed, delta, projection, peerMedFinal, peerN: peerVals.length };
@@ -348,7 +354,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
             />
             <Stat
               label="Projected final"
-              value={headline.projection ? "~" + headline.projection.toLocaleString() : "—"}
+              value={headline.projection ? "~" + headline.projection.toLocaleString() : headline.d < -30 ? "too early" : "—"}
               sub={`peer median final: ${headline.peerMedFinal ? Math.round(headline.peerMedFinal).toLocaleString() : "—"}`}
             />
           </div>
@@ -381,12 +387,15 @@ export default function PacingDashboard({ initialLiveData = {} }) {
               {milestoneRows.map(r => {
                 // Find the "now" milestone — closest milestone before todayD, only if currentTix at later milestones is null
                 const isFuture = r.currentTix === null && todayD !== null && todayD < r.d;
-                // "now" = the most recent milestone that has currentTix data, when show is in progress
                 const lastReachedMs = [...milestoneRows].filter(x => x.currentTix !== null).pop();
                 const isNow = current.inProgress && r === lastReachedMs;
+                const lowConfidence = r.peerN < 3 && !isFuture;
                 return (
-                  <tr key={r.d} className={isFuture ? "future" : isNow ? "now" : ""}>
-                    <td className="lbl mono">{labelForDay(r.d)}{isNow ? " · today" : ""}</td>
+                  <tr key={r.d} className={isFuture ? "future" : isNow ? "now" : ""} style={{ opacity: lowConfidence ? 0.6 : 1 }}>
+                    <td className="lbl mono">
+                      {labelForDay(r.d)}{isNow ? " · today" : ""}
+                      {lowConfidence && <span title={`Only ${r.peerN} peer${r.peerN === 1 ? '' : 's'} at this milestone`} style={{ marginLeft: 6, fontSize: 10, color: "#B45309", background: "#FEF3C7", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>low n</span>}
+                    </td>
                     <td className="mono" style={{ fontWeight: 600 }}>
                       {r.currentTix !== null ? r.currentTix.toLocaleString() : (isFuture ? "—" : "—")}
                     </td>
