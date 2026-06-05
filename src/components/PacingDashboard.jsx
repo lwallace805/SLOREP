@@ -376,14 +376,14 @@ export default function PacingDashboard({ initialLiveData = {} }) {
             />
             <Stat
               label={`Peer median at ${headline.d <= 0 ? Math.abs(headline.d) + "d out" : "+" + headline.d + "d"}`}
-              value={Math.round(headline.peerMed).toLocaleString()}
+              value={headline.peerMed != null ? Math.round(headline.peerMed).toLocaleString() : "—"}
               sub={`across ${headline.peerN} peers`}
             />
             <Stat
               label="Vs median pace"
-              value={(headline.delta > 0 ? "+" : "") + headline.delta.toFixed(1) + "%"}
-              sub={headline.delta > 5 ? "ahead of pace" : headline.delta < -5 ? "behind pace" : "on pace"}
-              color={headline.delta > 5 ? "#0F766E" : headline.delta < -5 ? "#B91C1C" : "#475569"}
+              value={headline.delta != null ? (headline.delta > 0 ? "+" : "") + headline.delta.toFixed(1) + "%" : "—"}
+              sub={headline.delta != null ? (headline.delta > 5 ? "ahead of pace" : headline.delta < -5 ? "behind pace" : "on pace") : `need ≥3 peers (${headline.peerN} now)`}
+              color={headline.delta != null ? (headline.delta > 5 ? "#0F766E" : headline.delta < -5 ? "#B91C1C" : "#475569") : "#BBB1A0"}
             />
             <Stat
               label="Projected final (calibrated)"
