@@ -57,20 +57,43 @@ export default function PacingDashboard() {
   }, []);
   const [currentName, setCurrentName] = useState(defaultCurrent);
 
-  // Live Spektrix data: {showName: {d, c}} for all shows
+  // Live Spektrix data: {showName: {d, c}} for in-progress shows
   const [liveData, setLiveData] = useState({});
   const [liveUpdatedAt, setLiveUpdatedAt] = useState(null);
 
   useEffect(() => {
-    fetch('/api/live-pacing')
-      .then(r => r.json())
-      .then(data => {
-        if (!data.error) {
-          setLiveData(data);
-          setLiveUpdatedAt(new Date());
-        }
-      })
-      .catch(() => {}); // silent — fall back to static data
+    // For each in-progress show, fetch live count using delta-from-orders approach.
+    // We pass the baseline (last static series point) so the route adds only
+    // new sales since that date — matching the movement-report methodology exactly.
+    const inProgress = DATA.filter(s => s.inProgress && s.series.length > 0);
+    if (!inProgress.length) return;
+
+    Promise.all(inProgress.map(show => {
+      const lastPt = show.series[show.series.length - 1];
+      // Compute the calendar date of the last series point
+      const open = new Date(show.open + 'T00:00:00');
+      const baselineDate = new Date(open);
+      baselineDate.setDate(baselineDate.getDate() + lastPt.d);
+      const baseDateStr = baselineDate.toISOString().slice(0, 10);
+
+      const params = new URLSearchParams({
+        name: show.name,
+        baselineDate: baseDateStr,
+        baselineCount: String(lastPt.c),
+        openDate: show.open,
+      });
+      return fetch(`/api/live-pacing?${params}`)
+        .then(r => r.json())
+        .then(data => data.error ? null : [show.name, data])
+        .catch(() => null);
+    })).then(results => {
+      const newLive = {};
+      results.filter(Boolean).forEach(([name, data]) => { newLive[name] = data; });
+      if (Object.keys(newLive).length) {
+        setLiveData(newLive);
+        setLiveUpdatedAt(new Date());
+      }
+    });
   }, []);
 
   // Merge live data into a show's series for in-progress shows.
