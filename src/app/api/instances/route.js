@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getEvents, getInstanceAvailability } from '@/lib/spektrix';
 
-// 5-minute cache — same cadence as pacing page
-export const revalidate = 300;
+// Never cache — revalidate=300 caused Vercel to cache the full HTTP response
+// at the CDN level, meaning new code never ran until the 5-min TTL expired.
+export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
