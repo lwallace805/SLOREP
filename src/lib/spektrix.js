@@ -69,8 +69,13 @@ export async function getInstanceAvailability(eventId) {
   return data
     .map((inst) => {
       const avail = inst.availability || [];
+      // Count all committed seats — anything that isn't 'Available'.
+      // Subscriber allocations, comps, and box-office sales all have non-Available
+      // statuses (e.g. 'Allocated', 'Subscription', 'Sold', 'Complimentary').
+      // Counting only 'Sold' misses subscriber seats and causes badly understated
+      // fill rates for performances that are heavily pre-allocated by subscribers.
       const sold = avail
-        .filter((a) => a.status === 'Sold')
+        .filter((a) => a.status !== 'Available')
         .reduce((s, a) => s + a.count, 0);
       const cap = inst.capacity || 0;
       const dt = inst.start ? inst.start.slice(0, 16).replace('T', ' ') : '';
