@@ -35,7 +35,7 @@ const PROJ_CALIBRATION = {
 // Recent seasons for drama/comedy weighting (last 2 seasons penalise stale comps)
 const RECENT_SEASONS = new Set(["24-25", "25-26"]);
 
-const MILESTONES = [-180, -90, -60, -30, -15, -7, -3, -1, 0];
+const MILESTONES = [-180, -90, -60, -30, -15, -7, -3, -1, 0, 7, 14, 21];
 
 // Lookup: cumulative at the most recent point at or before day d.
 // Returns null if d is past the show's last data point (milestone not reached).
@@ -246,7 +246,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
 
   // Chart data: per-day series with current, peer median, peer 25/75 band
   const chartData = useMemo(() => {
-    const xMin = -120, xMax = 14;
+    const xMin = -120, xMax = 28;
     const out = [];
     for (let d = xMin; d <= xMax; d++) {
       const row = { d };
@@ -308,7 +308,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
             How is this show pacing?
           </h1>
           <div style={{ fontSize: 14, color: "#6B6052" }}>
-            Net single-ticket sales vs peer median at key milestones before opening
+            Net single-ticket sales vs peer median at key milestones before and into the run
           </div>
         </div>
 
@@ -429,14 +429,26 @@ export default function PacingDashboard({ initialLiveData = {} }) {
               </tr>
             </thead>
             <tbody>
-              {milestoneRows.map(r => {
+              {milestoneRows.map((r, ri) => {
                 // Find the "now" milestone — closest milestone before todayD, only if currentTix at later milestones is null
                 const isFuture = r.currentTix === null && todayD !== null && todayD < r.d;
                 const lastReachedMs = [...milestoneRows].filter(x => x.currentTix !== null).pop();
                 const isNow = current.inProgress && r === lastReachedMs;
                 const lowConfidence = r.peerN < 3 && !isFuture;
+                // Insert a divider row between opening night (d=0) and post-opening milestones
+                const divider = r.d === 7 ? (
+                  <tr key="divider-opening">
+                    <td colSpan={7} style={{ padding: "0", borderBottom: "2px solid #D9D2C5", borderTop: "2px solid #D9D2C5" }}>
+                      <div style={{ padding: "5px 12px", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "#8B7E68", fontWeight: 600, background: "#F5F1E8" }}>
+                        Post-opening · into the run ↓
+                      </div>
+                    </td>
+                  </tr>
+                ) : null;
                 return (
-                  <tr key={r.d} className={isFuture ? "future" : isNow ? "now" : ""} style={{ opacity: lowConfidence ? 0.6 : 1 }}>
+                  <React.Fragment key={r.d}>
+                    {divider}
+                    <tr className={isFuture ? "future" : isNow ? "now" : ""} style={{ opacity: lowConfidence ? 0.6 : 1 }}>
                     <td className="lbl mono">
                       {labelForDay(r.d)}{isNow ? " · today" : ""}
                       {lowConfidence && <span title={`Only ${r.peerN} peer${r.peerN === 1 ? '' : 's'} at this milestone`} style={{ marginLeft: 6, fontSize: 10, color: "#B45309", background: "#FEF3C7", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>low n</span>}
@@ -463,6 +475,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
                       {r.peerMin !== null ? `${Math.round(r.peerMin).toLocaleString()}–${Math.round(r.peerMax).toLocaleString()}` : "—"}
                     </td>
                   </tr>
+                  </React.Fragment>
                 );
               })}
             </tbody>
@@ -496,7 +509,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ top: 12, right: 24, bottom: 28, left: 12 }}>
                 <CartesianGrid stroke="#F0EAD8" strokeDasharray="3 3" />
-                <XAxis dataKey="d" type="number" domain={[-120, 14]}
+                <XAxis dataKey="d" type="number" domain={[-120, 28]}
                   tick={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fill: "#6B6052" }}
                   tickFormatter={v => v === 0 ? "open" : (v > 0 ? `+${v}d` : `${v}d`)}
                   stroke="#C8BFAC" />
@@ -649,8 +662,11 @@ export default function PacingDashboard({ initialLiveData = {} }) {
 }
 
 function labelForDay(d) {
-  if (d === 0) return "Opening";
-  if (d < 0) return `${Math.abs(d)} days out`;
+  if (d === 0) return "Opening night";
+  if (d < 0) return `${Math.abs(d)} days before opening`;
+  if (d === 7)  return "+7 days (1 week in)";
+  if (d === 14) return "+14 days (2 weeks in)";
+  if (d === 21) return "+21 days (3 weeks in)";
   return `+${d} days into run`;
 }
 
