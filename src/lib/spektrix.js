@@ -69,17 +69,17 @@ export async function getInstanceAvailability(eventId) {
   return data
     .map((inst) => {
       const avail = inst.availability || [];
-      // Count all committed seats — anything that isn't 'Available'.
-      // Subscriber allocations, comps, and box-office sales all have non-Available
-      // statuses (e.g. 'Allocated', 'Subscription', 'Sold', 'Complimentary').
-      // Counting only 'Sold' misses subscriber seats and causes badly understated
-      // fill rates for performances that are heavily pre-allocated by subscribers.
+      // Availability API counts. These are unreliable for PAST performances —
+      // Spektrix resets seat statuses after a performance date passes, so the
+      // "sold" figure here drops to near-zero even for a full house.
+      // The instances route overrides these with orders-based counts for accuracy.
       const sold = avail
-        .filter((a) => a.status !== 'Available')
+        .filter((a) => a.status === 'Sold')
         .reduce((s, a) => s + a.count, 0);
       const cap = inst.capacity || 0;
       const dt = inst.start ? inst.start.slice(0, 16).replace('T', ' ') : '';
-      return { dt, sold, cap, pct: cap > 0 ? Math.round((sold / cap) * 1000) / 10 : 0 };
+      // Pass id through so callers can match against orders-based per-instance counts
+      return { id: inst.id, dt, sold, cap, pct: cap > 0 ? Math.round((sold / cap) * 1000) / 10 : 0 };
     })
     .filter((i) => i.dt)
     .sort((a, b) => a.dt.localeCompare(b.dt));
