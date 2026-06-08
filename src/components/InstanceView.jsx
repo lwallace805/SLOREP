@@ -70,14 +70,17 @@ export default function InstanceView({ initialData = null }) {
       .finally(() => setLoadingShows(false));
   }, []);
 
-  // Load instance data whenever selected show changes (availability API — fast)
+  // Load instance data whenever selected show changes.
+  // Always fetch fresh from the API — never rely solely on ISR-cached initialData,
+  // since cached data may be stale. If we already have data for this show
+  // (e.g. from initialData), keep displaying it while the refresh runs silently.
   useEffect(() => {
     if (!selectedName) return;
-    if (initialData?.name === selectedName) {
-      setLoadingData(false);
-      return;
+    const alreadyHaveData = data?.name?.toLowerCase() === selectedName.toLowerCase();
+    if (!alreadyHaveData) {
+      setLoadingData(true);
+      setData(null);
     }
-    setLoadingData(true);
     setError(null);
     setAccurateTotal(null);
     fetch(`/api/instances?name=${encodeURIComponent(selectedName)}`)
@@ -90,15 +93,16 @@ export default function InstanceView({ initialData = null }) {
       .finally(() => setLoadingData(false));
   }, [selectedName]);
 
-  // For in-progress shows, fetch the accurate total from the pacing endpoint.
-  // Skip if server already provided it via initialData.accurateTotal.
+  // For in-progress shows, also fetch the orders-based accurate total for the
+  // summary card (covers tickets not yet allocated to a specific instance).
+  // Condition was previously backwards (< TODAY exits for shows that HAVE opened).
   useEffect(() => {
     if (!selectedName || !shows.length) return;
-    if (initialData?.name === selectedName && initialData?.accurateTotal != null) return;
     const selectedShow = shows.find(s => s.name === selectedName);
     if (!selectedShow?.firstInstance) return;
     const openDate = selectedShow.firstInstance.slice(0, 10);
-    if (openDate < TODAY) return;
+    // Only fetch for shows that have already opened (openDate is in the past)
+    if (openDate > TODAY) return;
     const params = new URLSearchParams({
       name: selectedName,
       baselineDate: '2026-06-02',

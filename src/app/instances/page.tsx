@@ -8,8 +8,9 @@ export const metadata = {
   description: "Tickets sold per instance vs capacity",
 };
 
-// Rebuild every 5 minutes — same cadence as pacing page
-export const revalidate = 300;
+// Always render fresh — availability data changes constantly and the ISR cache
+// was causing stale per-instance counts to persist across deployments.
+export const dynamic = 'force-dynamic';
 
 const DEFAULT_SHOW = "A Grand Night for Singing";
 
