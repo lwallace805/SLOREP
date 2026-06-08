@@ -8,9 +8,10 @@ export const metadata = {
   description: "Tickets sold per instance vs capacity",
 };
 
-// Always render fresh — availability data changes constantly and the ISR cache
-// was causing stale per-instance counts to persist across deployments.
-export const dynamic = 'force-dynamic';
+// ISR with 5-minute TTL — this pre-fetch is only for the instant initial paint.
+// The InstanceView client component always re-fetches from /api/instances on
+// mount, so stale ISR data is replaced with live data within milliseconds.
+export const revalidate = 300;
 
 const DEFAULT_SHOW = "A Grand Night for Singing";
 
