@@ -69,17 +69,19 @@ export async function getInstanceAvailability(eventId) {
   return data
     .map((inst) => {
       const avail = inst.availability || [];
-      // Availability API counts. These are unreliable for PAST performances —
-      // Spektrix resets seat statuses after a performance date passes, so the
-      // "sold" figure here drops to near-zero even for a full house.
-      // The instances route overrides these with orders-based counts for accuracy.
+      // Count committed seats: 'Sold' (pre-purchased, upcoming or no-show) +
+      // 'Scanned' (ticket scanned at the door — the patron attended).
+      // Once a patron enters, Spektrix moves their ticket from Sold → Scanned,
+      // so past performances show almost everything under Scanned.
+      // Counting only 'Sold' gives ~10% fill even for a packed house.
+      // 'Available' = seats that were never purchased; we exclude those.
       const sold = avail
-        .filter((a) => a.status === 'Sold')
+        .filter((a) => a.status === 'Sold' || a.status === 'Scanned')
         .reduce((s, a) => s + a.count, 0);
       const cap = inst.capacity || 0;
       const dt = inst.start ? inst.start.slice(0, 16).replace('T', ' ') : '';
-      // Pass id through so callers can match against orders-based per-instance counts
-      return { id: inst.id, dt, sold, cap, pct: cap > 0 ? Math.round((sold / cap) * 1000) / 10 : 0 };
+      // Availability endpoint uses 'eventInstanceId', not 'id'
+      return { id: inst.eventInstanceId, dt, sold, cap, pct: cap > 0 ? Math.round((sold / cap) * 1000) / 10 : 0 };
     })
     .filter((i) => i.dt)
     .sort((a, b) => a.dt.localeCompare(b.dt));
