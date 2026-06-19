@@ -36,8 +36,9 @@ export default function RootLayout({
             SLO Rep
           </span>
           {[
-            { href: "/",           label: "Pacing" },
-            { href: "/instances",  label: "By Performance" },
+            { href: "/",                    label: "Pacing" },
+            { href: "/instances",           label: "By Performance" },
+            { href: "/season-subscription", label: "Season Subscription" },
           ].map(({ href, label }) => (
             <Link
               key={href}
