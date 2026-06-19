@@ -17,31 +17,41 @@ const DEFAULT_SHOW = "A Grand Night for Singing";
 
 async function getDefaultShowData() {
   try {
-    const events = await getEvents();
-    const event = events.find(
-      (e: any) => e.name?.toLowerCase() === DEFAULT_SHOW.toLowerCase()
-    );
-    if (!event) return null;
-
-    // Availability API — fast (1 call), gives per-instance sold/cap
-    const instances = await getInstanceAvailability((event as any).id);
-
-    // Accurate total from orders (includes comps + subscriptions)
-    const inProgressShows = (DATA as any[]).filter(
-      (s) => s.name === DEFAULT_SHOW && s.inProgress
-    );
-    const liveMap = await getLivePacingData(inProgressShows).catch(() => ({}));
-    const accurateTotal: number | null = (liveMap as any)[DEFAULT_SHOW]?.c ?? null;
-
-    return {
-      name: (event as any).name,
-      eventId: (event as any).id,
-      instances,
-      accurateTotal,
-    };
+    // 30s hard ceiling so Spektrix slowness doesn't blow the 60s build limit.
+    return await Promise.race([
+      _getDefaultShowData(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 30000)
+      ),
+    ]);
   } catch {
     return null;
   }
+}
+
+async function _getDefaultShowData() {
+  const events = await getEvents();
+  const event = events.find(
+    (e: any) => e.name?.toLowerCase() === DEFAULT_SHOW.toLowerCase()
+  );
+  if (!event) return null;
+
+  // Availability API — fast (1 call), gives per-instance sold/cap
+  const instances = await getInstanceAvailability((event as any).id);
+
+  // Accurate total from orders (includes comps + subscriptions)
+  const inProgressShows = (DATA as any[]).filter(
+    (s) => s.name === DEFAULT_SHOW && s.inProgress
+  );
+  const liveMap = await getLivePacingData(inProgressShows).catch(() => ({}));
+  const accurateTotal: number | null = (liveMap as any)[DEFAULT_SHOW]?.c ?? null;
+
+  return {
+    name: (event as any).name,
+    eventId: (event as any).id,
+    instances,
+    accurateTotal,
+  };
 }
 
 export default async function InstancesPage() {

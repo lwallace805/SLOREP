@@ -6,6 +6,12 @@ import { DATA } from "@/data/pacingData";
 export const revalidate = 300;
 
 export default async function Home() {
-  const initialLiveData = await getLivePacingData(DATA).catch(() => ({}));
+  // Add a 30s timeout so slow Spektrix API calls don't blow the 60s build limit.
+  const initialLiveData = await Promise.race([
+    getLivePacingData(DATA),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 30000)
+    ),
+  ]).catch(() => ({}));
   return <PacingDashboard initialLiveData={initialLiveData} />;
 }
