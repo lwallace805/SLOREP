@@ -116,10 +116,12 @@ export default function InstanceView({ initialData = null }) {
       baselineCount: String(lastPt.c),
       openDate: show.open,
     });
-    fetch(`/api/live-pacing?${params}`)
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    fetch(`/api/live-pacing?${params}`, { signal: controller.signal })
       .then(r => r.json())
-      .then(d => { if (!d.error && d.c > 0) setAccurateTotal(d.c); })
-      .catch(() => {});
+      .then(d => { clearTimeout(timeout); if (!d.error && d.c > 0) setAccurateTotal(d.c); })
+      .catch(() => { clearTimeout(timeout); });
   }, [selectedName, accurateTotal]);
   const { past, upcoming } = useMemo(() => {
     const instances = data?.instances || [];
@@ -131,9 +133,12 @@ export default function InstanceView({ initialData = null }) {
 
   const instances = data?.instances || [];
   const availSold  = instances.reduce((s, i) => s + i.sold, 0);
+  // Use static pacing data total when live data is unavailable
+  const showData = DATA.find(s => s.name === selectedName);
+  const staticTotal = showData?.series?.length ? showData.series[showData.series.length - 1].c : null;
   // Use the orders-based accurate total when available (includes comps + subscriptions)
-  // Fall back to availability API sum for completed shows or when live total not yet loaded
-  const totalSold  = accurateTotal || availSold;
+  // Fall back to static pacing total, then per-instance availability sum
+  const totalSold  = accurateTotal || staticTotal || availSold;
   const totalCap   = instances.reduce((s, i) => s + i.cap, 0);
   const overallPct = totalCap > 0 ? (totalSold / totalCap * 100).toFixed(1) : '0.0';
   const upcomingTotalSold = upcoming.reduce((s, i) => s + i.sold, 0);
