@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { DATA } from '@/data/pacingData';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -133,12 +132,10 @@ export default function InstanceView({ initialData = null }) {
 
   const instances = data?.instances || [];
   const availSold  = instances.reduce((s, i) => s + i.sold, 0);
-  // Use static pacing data total when live data is unavailable
-  const showData = DATA.find(s => s.name === selectedName);
-  const staticTotal = showData?.series?.length ? showData.series[showData.series.length - 1].c : null;
   // Use the orders-based accurate total when available (includes comps + subscriptions)
-  // Fall back to static pacing total, then per-instance availability sum
-  const totalSold  = accurateTotal || staticTotal || availSold;
+  // Fall back to availability API sum (all committed seats: Sold + Scanned) for completed
+  // shows or when live total not yet loaded. This matches per-instance fill methodology.
+  const totalSold  = accurateTotal || availSold;
   const totalCap   = instances.reduce((s, i) => s + i.cap, 0);
   const overallPct = totalCap > 0 ? (totalSold / totalCap * 100).toFixed(1) : '0.0';
   const upcomingTotalSold = upcoming.reduce((s, i) => s + i.sold, 0);
