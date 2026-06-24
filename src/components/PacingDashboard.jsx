@@ -97,6 +97,15 @@ export default function PacingDashboard({ initialLiveData = {} }) {
         if (!d.error && d.instances) {
           const total = d.instances.reduce((s, i) => s + i.sold, 0);
           setAvailTotal(total);
+          // Also update liveData so the milestone table shows the correct position
+          const [oy, om, od] = show.open.split('-').map(Number);
+          const openUtcMs = Date.UTC(oy, om - 1, od);
+          const todayPacific = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+          const [ty, tm, td] = todayPacific.split('-').map(Number);
+          const todayUtcMs = Date.UTC(ty, tm - 1, td);
+          const d = Math.round((todayUtcMs - openUtcMs) / 86400000);
+          setLiveData(prev => ({...prev, [currentName]: {d, c: total}}));
+          setLiveUpdatedAt(new Date());
         }
       })
       .catch(() => setAvailTotal(null));
@@ -132,7 +141,15 @@ export default function PacingDashboard({ initialLiveData = {} }) {
       const newLive = {};
       results.filter(Boolean).forEach(([name, data]) => { newLive[name] = data; });
       if (Object.keys(newLive).length) {
-        setLiveData(newLive);
+        setLiveData(prev => {
+          const merged = {...prev};
+          for (const [name, data] of Object.entries(newLive)) {
+            if (!merged[name] || merged[name].c < data.c) {
+              merged[name] = data;
+            }
+          }
+          return merged;
+        });
         setLiveUpdatedAt(new Date());
       }
     });
@@ -472,10 +489,10 @@ export default function PacingDashboard({ initialLiveData = {} }) {
                       {lowConfidence && <span title={`Only ${r.peerN} peer${r.peerN === 1 ? '' : 's'} at this milestone`} style={{ marginLeft: 6, fontSize: 10, color: "#B45309", background: "#FEF3C7", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>low n</span>}
                     </td>
                     <td className="mono" style={{ fontWeight: 600 }}>
-                      {r.currentTix !== null ? r.currentTix.toLocaleString() : (isFuture ? "—" : "—")}
+                      {isNow && currentToday ? currentToday.c.toLocaleString() : (r.currentTix !== null ? r.currentTix.toLocaleString() : "—")}
                     </td>
                     <td className="mono" style={{ color: "#6B6052" }}>
-                      {r.currentCapPct !== null ? r.currentCapPct.toFixed(1) + "%" : "—"}
+                      {isNow && currentToday ? (currentToday.c / current.cap * 100).toFixed(1) + "%" : (r.currentCapPct !== null ? r.currentCapPct.toFixed(1) + "%" : "—")}
                     </td>
                     <td className="mono">{r.peerMedTix !== null ? Math.round(r.peerMedTix).toLocaleString() : "—"}</td>
                     <td className="mono" style={{ color: "#6B6052" }}>
