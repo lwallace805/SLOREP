@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getEvents, getInstanceAvailability } from '@/lib/spektrix';
+import { getLivePacingData } from '@/lib/livePacing';
+import { DATA } from '@/data/pacingData';
 
 // Never cache — revalidate=300 caused Vercel to cache the full HTTP response
 // at the CDN level, meaning new code never ran until the 5-min TTL expired.
@@ -24,7 +26,15 @@ export async function GET(request) {
 
     const instances = await getInstanceAvailability(event.id);
 
-    return NextResponse.json({ name: event.name, eventId: event.id, instances });
+    // Compute accurate total from orders API (matches pacing page methodology)
+    let accurateTotal = null;
+    const showData = DATA.find(s => s.name === event.name && s.inProgress);
+    if (showData) {
+      const liveMap = await getLivePacingData([showData]).catch(() => ({}));
+      accurateTotal = liveMap[event.name]?.c ?? null;
+    }
+
+    return NextResponse.json({ name: event.name, eventId: event.id, instances, accurateTotal });
   } catch (err) {
     console.error('Spektrix /instances error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });

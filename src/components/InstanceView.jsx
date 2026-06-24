@@ -88,32 +88,15 @@ export default function InstanceView({ initialData = null }) {
       .then((d) => {
         if (d.error) throw new Error(d.error);
         setData(d);
+        // Use accurate total from orders API (matches pacing page)
+        if (d.accurateTotal > 0) setAccurateTotal(d.accurateTotal);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoadingData(false));
   }, [selectedName]);
 
-  // For in-progress shows, also fetch the orders-based accurate total for the
-  // summary card (covers tickets not yet allocated to a specific instance).
-  // Condition was previously backwards (< TODAY exits for shows that HAVE opened).
-  useEffect(() => {
-    if (!selectedName || !shows.length) return;
-    const selectedShow = shows.find(s => s.name === selectedName);
-    if (!selectedShow?.firstInstance) return;
-    const openDate = selectedShow.firstInstance.slice(0, 10);
-    // Only fetch for shows that have already opened (openDate is in the past)
-    if (openDate > TODAY) return;
-    const params = new URLSearchParams({
-      name: selectedName,
-      baselineDate: '2026-06-02',
-      baselineCount: '1289',
-      openDate,
-    });
-    fetch(`/api/live-pacing?${params}`)
-      .then(r => r.json())
-      .then(d => { if (!d.error && d.c > 0) setAccurateTotal(d.c); })
-      .catch(() => {});
-  }, [selectedName, shows]);
+  // Accurate total now comes from /api/instances (which uses orders API, matching pacing page).
+  // No client-side fallback needed — the API computes it correctly server-side.
 
   const { past, upcoming } = useMemo(() => {
     const instances = data?.instances || [];
