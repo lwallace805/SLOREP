@@ -42,11 +42,6 @@ export default function InstanceView({ initialData = null }) {
   const [shows, setShows] = useState([]);
   const [selectedName, setSelectedName] = useState('A Grand Night for Singing');
   const [data, setData] = useState(initialData);
-  // Accurate total (orders-based, includes comps + subscriptions).
-  // Pre-populated from server ISR so no flash on default show.
-  const [accurateTotal, setAccurateTotal] = useState(
-    initialData?.accurateTotal ?? null
-  );
   const [loadingShows, setLoadingShows] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState(null);
@@ -82,46 +77,16 @@ export default function InstanceView({ initialData = null }) {
       setData(null);
     }
     setError(null);
-    setAccurateTotal(null);
     fetch(`/api/instances?name=${encodeURIComponent(selectedName)}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.error) throw new Error(d.error);
         setData(d);
-        // Use accurate total from orders API (matches pacing page)
-        if (d.accurateTotal > 0) setAccurateTotal(d.accurateTotal);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoadingData(false));
   }, [selectedName]);
 
-  // Accurate total comes from server ISR for the default show.
-  // For other shows, compute client-side using the static pacing data
-  // to get the correct baseline, then call /api/live-pacing.
-  useEffect(() => {
-    if (!selectedName || accurateTotal) return;
-    const show = DATA.find(s => s.name === selectedName && s.inProgress);
-    if (!show || !show.series.length) return;
-
-    const lastPt = show.series[show.series.length - 1];
-    const [oy, om, od] = show.open.split('-').map(Number);
-    const openUtcMs = Date.UTC(oy, om - 1, od);
-    const baselineUtcMs = openUtcMs + lastPt.d * 86400000;
-    const baselineDate = new Date(baselineUtcMs).toISOString().slice(0, 10);
-
-    const params = new URLSearchParams({
-      name: selectedName,
-      baselineDate,
-      baselineCount: String(lastPt.c),
-      openDate: show.open,
-    });
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-    fetch(`/api/live-pacing?${params}`, { signal: controller.signal })
-      .then(r => r.json())
-      .then(d => { clearTimeout(timeout); if (!d.error && d.c > 0) setAccurateTotal(d.c); })
-      .catch(() => { clearTimeout(timeout); });
-  }, [selectedName, accurateTotal]);
   const { past, upcoming } = useMemo(() => {
     const instances = data?.instances || [];
     return {
@@ -131,11 +96,7 @@ export default function InstanceView({ initialData = null }) {
   }, [data]);
 
   const instances = data?.instances || [];
-  const availSold  = instances.reduce((s, i) => s + i.sold, 0);
-  // Use the orders-based accurate total when available (includes comps + subscriptions)
-  // Fall back to availability API sum (all committed seats: Sold + Scanned) for completed
-  // shows or when live total not yet loaded. This matches per-instance fill methodology.
-  const totalSold  = accurateTotal || availSold;
+  const totalSold  = instances.reduce((s, i) => s + i.sold, 0);
   const totalCap   = instances.reduce((s, i) => s + i.cap, 0);
   const overallPct = totalCap > 0 ? (totalSold / totalCap * 100).toFixed(1) : '0.0';
   const upcomingTotalSold = upcoming.reduce((s, i) => s + i.sold, 0);

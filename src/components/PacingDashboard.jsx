@@ -84,6 +84,24 @@ export default function PacingDashboard({ initialLiveData = {} }) {
     Object.keys(initialLiveData).length ? new Date() : null
   );
 
+  // Availability total (all committed: Sold + Scanned) for in-progress shows.
+  // This is the headline number the user sees; it includes comps and subscriptions.
+  const [availTotal, setAvailTotal] = useState(null);
+
+  useEffect(() => {
+    const show = DATA.find(s => s.name === currentName);
+    if (!show?.inProgress) { setAvailTotal(null); return; }
+    fetch(`/api/instances?name=${encodeURIComponent(currentName)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (!d.error && d.instances) {
+          const total = d.instances.reduce((s, i) => s + i.sold, 0);
+          setAvailTotal(total);
+        }
+      })
+      .catch(() => setAvailTotal(null));
+  }, [currentName]);
+
   useEffect(() => {
     // For each in-progress show, fetch live count using delta-from-orders approach.
     // We pass the baseline (last static series point) so the route adds only
@@ -372,8 +390,8 @@ export default function PacingDashboard({ initialLiveData = {} }) {
           }}>
             <Stat
               label={`Right now (${headline.d <= 0 ? Math.abs(headline.d) + "d out" : "+" + headline.d + "d into run"})`}
-              value={headline.currentTix.toLocaleString()}
-              sub={`${(headline.currentTix / current.cap * 100).toFixed(1)}% of capacity`}
+              value={(availTotal ?? headline.currentTix).toLocaleString()}
+              sub={`${((availTotal ?? headline.currentTix) / current.cap * 100).toFixed(1)}% of capacity`}
             />
             <Stat
               label={`Peer median at ${headline.d <= 0 ? Math.abs(headline.d) + "d out" : "+" + headline.d + "d"}`}
@@ -568,7 +586,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
             <tbody>
               {/* Current show row */}
               {(() => {
-                const currentTix = currentToday ? currentToday.c : current.final;
+                const currentTix = availTotal ?? (currentToday ? currentToday.c : current.final);
                 const currentCapPct = current.cap ? (currentTix / current.cap * 100).toFixed(1) + "%" : "—";
                 const projectedFinal = headline && headline.projection ? headline.projection : null;
                 const projLow = headline?.projectionLow;
