@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { DATA } from '@/data/pacingData';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -95,9 +96,31 @@ export default function InstanceView({ initialData = null }) {
       .finally(() => setLoadingData(false));
   }, [selectedName]);
 
-  // Accurate total now comes from /api/instances (which uses orders API, matching pacing page).
-  // No client-side fallback needed — the API computes it correctly server-side.
+  // Accurate total comes from server ISR for the default show.
+  // For other shows, compute client-side using the static pacing data
+  // to get the correct baseline, then call /api/live-pacing.
+  useEffect(() => {
+    if (!selectedName || accurateTotal) return;
+    const show = DATA.find(s => s.name === selectedName && s.inProgress);
+    if (!show || !show.series.length) return;
 
+    const lastPt = show.series[show.series.length - 1];
+    const [oy, om, od] = show.open.split('-').map(Number);
+    const openUtcMs = Date.UTC(oy, om - 1, od);
+    const baselineUtcMs = openUtcMs + lastPt.d * 86400000;
+    const baselineDate = new Date(baselineUtcMs).toISOString().slice(0, 10);
+
+    const params = new URLSearchParams({
+      name: selectedName,
+      baselineDate,
+      baselineCount: String(lastPt.c),
+      openDate: show.open,
+    });
+    fetch(`/api/live-pacing?${params}`)
+      .then(r => r.json())
+      .then(d => { if (!d.error && d.c > 0) setAccurateTotal(d.c); })
+      .catch(() => {});
+  }, [selectedName, accurateTotal]);
   const { past, upcoming } = useMemo(() => {
     const instances = data?.instances || [];
     return {
