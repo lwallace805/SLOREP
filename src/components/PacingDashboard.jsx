@@ -28,7 +28,8 @@ const PROJ_CALIBRATION = {
 };
 
 const RECENT_SEASONS = new Set(["24-25", "25-26"]);
-const MILESTONES = [-180, -90, -60, -30, -15, -7, -3, -1, 0, 7, 14, 21];
+const MILESTONE_BASE = [-180, -90, -60, -30, -15, -7, -3, -1, 0, 7, 14, 21];
+const MILESTONES = MILESTONE_BASE; // kept for compat
 
 function lookupAt(series, d) {
   if (!series.length) return null;
@@ -146,11 +147,18 @@ export default function PacingDashboard({ initialLiveData = {} }) {
 
   const currentToday = current.series[current.series.length - 1] || null;
 
+  const dynamicMilestones = useMemo(() => {
+    if (!currentToday) return MILESTONE_BASE;
+    const td = currentToday.d;
+    if (MILESTONE_BASE.includes(td)) return MILESTONE_BASE;
+    return [...MILESTONE_BASE, td].sort((a, b) => a - b);
+  }, [currentToday]);
+
   const milestoneRows = useMemo(() => {
-    return MILESTONES.map(d => {
-      const cPt = lookupAt(current.series, d);
+    return dynamicMilestones.map(d => {
+      const cPt = lookupAt(current.series, d, true);
       const peerData = peers.map(p => {
-        const pt = lookupAt(p.series, d);
+        const pt = lookupAt(p.series, d, true);
         return pt ? { tix: pt.c, pct: pt.p, name: p.name, final: p.final, cap: p.cap, capPct: (pt.c / p.cap) * 100 } : null;
       }).filter(Boolean);
       const peerTix = peerData.map(v => v.tix);
@@ -175,7 +183,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
         peerN: peerData.length, delta, projection, peerMedFinal,
       };
     });
-  }, [current, peers]);
+  }, [current, peers, dynamicMilestones]);
 
   const headline = useMemo(() => {
     if (!currentToday || !peers.length) return null;
@@ -413,7 +421,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
                     return [Math.round(v).toLocaleString(), labels[n] || n];
                   }}
                 />
-                {MILESTONES.map(d => (
+                {MILESTONE_BASE.map(d => (
                   <ReferenceLine key={d} x={d} stroke="#e4ddd5" strokeDasharray="2 4" />
                 ))}
                 <ReferenceLine x={0} stroke="#1c1a18" strokeWidth={1.2} label={{ value: "Opening", position: "top", fontSize: 10, fill: "#1c1a18" }} />
