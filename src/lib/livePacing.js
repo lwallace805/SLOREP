@@ -3,7 +3,7 @@
  * page pre-fetch. Calling this directly avoids an HTTP round-trip.
  */
 import crypto from 'crypto';
-import { getEvents } from './spektrix';
+import { getEvents, getCurrentSold } from './spektrix';
 
 // SLO Rep is in Pacific Time.
 export function getPacificDateString() {
@@ -30,27 +30,7 @@ function spektrixSign(method, url) {
   };
 }
 
-async function countOrderTickets(eventId, fromDate, toDate) {
-  const base = `https://system.spektrix.com/${process.env.SPEKTRIX_CLIENT_NAME}/api/v3`;
-  let page = 1;
-  let count = 0;
-  while (true) {
-    const url = `${base}/orders?DateFrom=${fromDate}&DateTo=${toDate}&page=${page}&pageSize=200`;
-    const res = await fetch(url, { headers: spektrixSign('GET', url) });
-    if (!res.ok) break;
-    if (!(res.headers.get('content-type') || '').includes('json')) break;
-    const orders = await res.json();
-    if (!Array.isArray(orders) || orders.length === 0) break;
-    for (const order of orders) {
-      for (const t of order.tickets || []) {
-        if (t.event?.id === eventId) count++;
-      }
-    }
-    if (orders.length < 200) break;
-    page++;
-  }
-  return count;
-}
+// Removed countOrderTickets — replaced by getCurrentSold (availability endpoint, no timeout risk)
 
 // Comp ticket type IDs from Spektrix
 const COMP_TYPE_IDS = new Set([
@@ -202,18 +182,14 @@ export async function getLivePacingData(shows) {
       const event = events.find(e => e.name?.toLowerCase() === show.name.toLowerCase());
       if (!event) return;
 
-      const lastPt = show.series[show.series.length - 1];
       const [oy, om, od] = show.open.split('-').map(Number);
       const openUtcMs = Date.UTC(oy, om - 1, od);
 
-      // fromDate = day after last static series point
-      const baselineUtcMs = openUtcMs + lastPt.d * 86400000;
-      const fromDate = new Date(baselineUtcMs + 86400000).toISOString().slice(0, 10);
-
-      const delta = await countOrderTickets(event.id, fromDate, today);
+      // Use availability endpoint — instant, no order iteration, no timeout
+      const totalSold = await getCurrentSold(event.id);
 
       const d = Math.round((pacificDateToUtcMs(today) - openUtcMs) / 86400000);
-      result[show.name] = { d, c: lastPt.c + delta };
+      result[show.name] = { d, c: totalSold };
     } catch {
       // show falls back to static data
     }
