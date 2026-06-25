@@ -106,7 +106,8 @@ export default function PacingDashboard({ initialLiveData = {} }) {
     if (!live || live.c <= 0) return show.series;
     const lastPt = show.series[show.series.length - 1];
     const c = Math.max(live.c, lastPt ? lastPt.c : 0);
-    const p = show.cap > 0 ? Math.round(c / show.cap * 1000) / 10 : 0;
+    const realCap = (live.cap > 0 ? live.cap : show.cap);
+    const p = realCap > 0 ? Math.round(c / realCap * 1000) / 10 : 0;
     const series = show.series.filter(pt => pt.d < live.d);
     return [...series, { d: live.d, c, p }];
   };
@@ -125,6 +126,10 @@ export default function PacingDashboard({ initialLiveData = {} }) {
     ...show,
     series: getLiveSeries(show),
     final: liveApplied[show.name] ? Math.max(liveData[show.name].c, show.final) : show.final,
+    // Use real cap from Spektrix when available (excludes cancelled performances)
+    cap: (liveApplied[show.name] && liveData[show.name]?.cap > 0)
+      ? liveData[show.name].cap
+      : show.cap,
   })), [liveData, liveApplied]);
 
   const current = liveDATA.find(s => s.name === currentName) || liveDATA[0];

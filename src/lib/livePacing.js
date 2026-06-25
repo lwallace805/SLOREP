@@ -3,7 +3,7 @@
  * page pre-fetch. Calling this directly avoids an HTTP round-trip.
  */
 import crypto from 'crypto';
-import { getEvents, getCurrentSold } from './spektrix';
+import { getEvents, getInstanceAvailability } from './spektrix';
 
 // SLO Rep is in Pacific Time.
 export function getPacificDateString() {
@@ -186,10 +186,13 @@ export async function getLivePacingData(shows) {
       const openUtcMs = Date.UTC(oy, om - 1, od);
 
       // Use availability endpoint — instant, no order iteration, no timeout
-      const totalSold = await getCurrentSold(event.id);
+      // Returns real sold + real cap (excludes cancelled performances Spektrix removed)
+      const instances = await getInstanceAvailability(event.id);
+      const totalSold = instances.reduce((s, i) => s + i.sold, 0);
+      const realCap   = instances.reduce((s, i) => s + i.cap,  0);
 
       const d = Math.round((pacificDateToUtcMs(today) - openUtcMs) / 86400000);
-      result[show.name] = { d, c: totalSold };
+      result[show.name] = { d, c: totalSold, cap: realCap };
     } catch {
       // show falls back to static data
     }
