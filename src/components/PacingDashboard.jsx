@@ -353,8 +353,11 @@ export default function PacingDashboard({ initialLiveData = {} }) {
           </div>
         )}
 
-        {/* Ticket mix */}
-        {current.inProgress && <TicketMixBar showName={current.name} />}
+        {/* Two-column layout: main content + right sidebar */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 18, alignItems: "start" }}>
+
+        {/* LEFT COLUMN */}
+        <div>
 
         {/* Filter panel */}
         <div style={{ background: "#ffffff", border: "1px solid #e4ddd5", borderRadius: 12, marginBottom: 18, overflow: "hidden" }}>
@@ -610,6 +613,101 @@ export default function PacingDashboard({ initialLiveData = {} }) {
             <strong>Capacity caveat</strong>: a few recent shows show &gt;100% sell-through against capacity, likely due to seat-hold release patterns not yet reconciled with Spektrix. Use % of capacity as a directional metric.
           </div>
         </div>
+
+        </div>{/* end LEFT COLUMN */}
+
+        {/* RIGHT SIDEBAR */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* Ticket Mix */}
+          {current.inProgress && (
+            <div style={{ background: "#ffffff", border: "1px solid #e4ddd5", borderRadius: 12, padding: "16px 18px" }}>
+              <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7a7570", fontWeight: 600, marginBottom: 4 }}>Ticket Mix</div>
+              <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 15, fontWeight: 600, color: "#1c1a18", marginBottom: 12 }}>{current.name}</div>
+              <TicketMixBar showName={current.name} inline />
+            </div>
+          )}
+
+          {/* Projection Detail */}
+          {headline?.projection && projRangeBar && (() => {
+            const cal = PROJ_CALIBRATION[current.cat] || { bias: 0.10, mape: 0.25 };
+            return (
+              <div style={{ background: "#ffffff", border: "1px solid #e4ddd5", borderRadius: 12, padding: "16px 18px" }}>
+                <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7a7570", fontWeight: 600, marginBottom: 4 }}>Projection Detail</div>
+                <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 15, fontWeight: 600, color: "#1c1a18", marginBottom: 12 }}>Calibrated forecast</div>
+                <div style={{ background: "#f7f2eb", borderRadius: 8, padding: "14px 16px", marginBottom: 12, textAlign: "center" }}>
+                  <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 28, fontWeight: 700, color: "#1c1a18" }}>~{headline.projection.toLocaleString()}</div>
+                  <div style={{ fontSize: 11, color: "#7a7570", marginTop: 3 }}>of {current.cap?.toLocaleString()} capacity</div>
+                  <div style={{ position: "relative", height: 6, background: "#e4ddd5", borderRadius: 100, margin: "10px 0 4px", overflow: "visible" }}>
+                    <div style={{ position: "absolute", top: 0, left: projRangeBar.fillLeft + "%", width: projRangeBar.fillWidth + "%", height: "100%", background: "linear-gradient(90deg,#6ee7b7,#a7f3d0)", borderRadius: 100 }} />
+                    <div style={{ position: "absolute", top: -4, left: projRangeBar.markerLeft + "%", width: 14, height: 14, background: "#0f766e", border: "2.5px solid #fff", borderRadius: "50%", transform: "translateX(-50%)", boxShadow: "0 1px 4px rgba(0,0,0,.12)" }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#7a7570", marginTop: 4 }}>
+                    <span>{projRangeBar.floorPct.toFixed(0)}% floor</span>
+                    <span style={{ fontWeight: 600, color: "#0f766e" }}>{projRangeBar.midPct.toFixed(0)}%</span>
+                    <span>{projRangeBar.ceilPct.toFixed(0)}% ceiling</span>
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 7, fontSize: 12 }}>
+                  {[
+                    ["Category bias", `+${(cal.bias * 100).toFixed(1)}%`],
+                    ["MAPE (error band)", `\u00b1${(cal.mape * 100).toFixed(1)}%`],
+                    ["Peers used", headline.peerN],
+                    ["Current d", headline.d >= 0 ? `+${headline.d}` : headline.d],
+                  ].map(([lbl, val]) => (
+                    <div key={lbl} style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "#7a7570" }}>{lbl}</span>
+                      <span style={{ fontWeight: 600, color: "#1c1a18" }}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Season Context */}
+          {(() => {
+            const currentSeason = current.season;
+            const seasonShows = liveDATA
+              .filter(s => s.season === currentSeason && s.cap > 0)
+              .sort((a, b) => a.open.localeCompare(b.open));
+            if (!seasonShows.length) return null;
+            return (
+              <div style={{ background: "#ffffff", border: "1px solid #e4ddd5", borderRadius: 12, padding: "16px 18px" }}>
+                <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7a7570", fontWeight: 600, marginBottom: 4 }}>Season Context</div>
+                <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 15, fontWeight: 600, color: "#1c1a18", marginBottom: 12 }}>{currentSeason} at a glance</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {seasonShows.map(s => {
+                    const lastPt = s.series[s.series.length - 1];
+                    const pct = lastPt && s.cap ? (lastPt.c / s.cap * 100) : 0;
+                    const isCurrent = s.name === currentName;
+                    const color = CATEGORIES[s.cat]?.color || "#7a7570";
+                    const isUpcoming = s.open > new Date().toISOString().slice(0, 10);
+                    return (
+                      <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: isCurrent ? 700 : 500, color: isCurrent ? "#1c1a18" : "#7a7570", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {s.name.length > 22 ? s.name.slice(0, 22) + "\u2026" : s.name}
+                            {isCurrent && <span style={{ marginLeft: 4, fontSize: 9, color: "#7a7570", fontWeight: 400 }}>(current)</span>}
+                          </div>
+                        </div>
+                        <div style={{ width: 60, height: 4, background: "#f0ebe4", borderRadius: 100, flexShrink: 0 }}>
+                          {!isUpcoming && <div style={{ width: Math.min(pct, 100) + "%", height: "100%", background: color, borderRadius: 100 }} />}
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color, width: 36, textAlign: "right", flexShrink: 0 }}>
+                          {isUpcoming ? <span style={{ color: "#bbb1a0", fontWeight: 400 }}>soon</span> : `${pct.toFixed(0)}%`}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+        </div>{/* end RIGHT SIDEBAR */}
+
+        </div>{/* end two-column grid */}
 
       </div>
     </div>

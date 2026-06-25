@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-export default function TicketMixBar({ showName }) {
+export default function TicketMixBar({ showName, inline = false }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -18,11 +18,10 @@ export default function TicketMixBar({ showName }) {
   }, [showName]);
 
   if (loading) {
+    const wrap = inline ? {} : { background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 6, padding: '14px 20px', marginBottom: 22 };
     return (
-      <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 6, padding: '14px 20px', marginBottom: 22 }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B7E68', fontWeight: 600, marginBottom: 8 }}>
-          Ticket Mix
-        </div>
+      <div style={wrap}>
+        {!inline && <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B7E68', fontWeight: 600, marginBottom: 8 }}>Ticket Mix</div>}
         <div style={{ height: 24, background: '#F5F1E8', borderRadius: 4, animation: 'pulse 1.5s infinite' }} />
         <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }`}</style>
       </div>
@@ -33,20 +32,15 @@ export default function TicketMixBar({ showName }) {
 
   const { total, buckets } = data;
 
+  const outerStyle = inline ? {} : { background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 6, padding: '14px 20px', marginBottom: 22 };
   return (
-    <div style={{
-      background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 6,
-      padding: '14px 20px', marginBottom: 22,
-    }}>
-      {/* Header row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B7E68', fontWeight: 600 }}>
-          Ticket Mix
+    <div style={outerStyle}>
+      {!inline && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+          <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B7E68', fontWeight: 600 }}>Ticket Mix</div>
+          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#6B6052' }}>{total.toLocaleString()} total committed seats</div>
         </div>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#6B6052' }}>
-          {total.toLocaleString()} total committed seats
-        </div>
-      </div>
+      )}
 
       {/* Stacked bar */}
       <div style={{ display: 'flex', height: 28, borderRadius: 4, overflow: 'hidden', gap: 1 }}>
@@ -86,9 +80,16 @@ export default function TicketMixBar({ showName }) {
         ))}
       </div>
 
-      <div style={{ marginTop: 8, fontSize: 10, color: '#BBB1A0', lineHeight: 1.4 }}>
-        Subscriber = tickets in orders with a season subscription purchase · Comp = Artist/Sponsor/Volunteer/General comps
-      </div>
+      {inline && (
+        <div style={{ marginTop: 8, fontSize: 11, color: '#7a7570' }}>
+          Total counted: <strong>{total.toLocaleString()}</strong> tickets across {buckets.filter(b=>b.count>0).length} buckets
+        </div>
+      )}
+      {!inline && (
+        <div style={{ marginTop: 8, fontSize: 10, color: '#BBB1A0', lineHeight: 1.4 }}>
+          Subscriber = tickets in orders with a season subscription purchase · Comp = Artist/Sponsor/Volunteer/General comps
+        </div>
+      )}
     </div>
   );
 }
