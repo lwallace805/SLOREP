@@ -237,7 +237,9 @@ export default function PacingDashboard({ initialLiveData = {} }) {
     // Calibrate projection using backtest-derived bias/mape per category
     const cal = PROJ_CALIBRATION[current.cat] || { bias: 0.10, mape: 0.25 };
     const projection = rawProjection ? Math.round(rawProjection / (1 + cal.bias)) : null;
-    const projectionLow  = rawProjection ? Math.round(rawProjection / (1 + cal.bias) * (1 - cal.mape)) : null;
+    // Floor projectionLow at tickets already sold — the range can never be below reality.
+    const rawLow = rawProjection ? Math.round(rawProjection / (1 + cal.bias) * (1 - cal.mape)) : null;
+    const projectionLow  = rawLow != null ? Math.max(rawLow, cPt.c) : null;
     const projectionHigh = rawProjection ? Math.round(rawProjection / (1 + cal.bias) * (1 + cal.mape)) : null;
 
     const peerMedFinal = median(peers.map(p => p.final));
