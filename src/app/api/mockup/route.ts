@@ -1,4 +1,8 @@
-<!DOCTYPE html>
+import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-static';
+
+const HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -513,3 +517,10 @@ function go(page){
 </script>
 </body>
 </html>
+`;
+
+export async function GET() {
+  return new NextResponse(HTML, {
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  });
+}
