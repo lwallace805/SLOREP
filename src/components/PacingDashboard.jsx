@@ -271,13 +271,19 @@ export default function PacingDashboard({ initialLiveData = {} }) {
 
     // Calibrate projection using backtest-derived bias/mape per category
     const cal = PROJ_CALIBRATION[current.cat] || { bias: 0.10, mape: 0.25 };
-    const projection = rawProjection ? Math.round(rawProjection / (1 + cal.bias)) : null;
-    const projectionLow  = rawProjection ? Math.round(rawProjection / (1 + cal.bias) * (1 - cal.mape)) : null;
-    const projectionHigh = rawProjection ? Math.round(rawProjection / (1 + cal.bias) * (1 + cal.mape)) : null;
+    let projection = rawProjection ? Math.round(rawProjection / (1 + cal.bias)) : null;
+    let projectionLow  = rawProjection ? Math.round(rawProjection / (1 + cal.bias) * (1 - cal.mape)) : null;
+    let projectionHigh = rawProjection ? Math.round(rawProjection / (1 + cal.bias) * (1 + cal.mape)) : null;
+
+    // A show cannot finish with fewer tickets than it already has.
+    // Clamp the lower bound to the current actual (or availability total if fetched).
+    const floor = availTotal ?? cPt.c;
+    if (projectionLow !== null && projectionLow < floor) projectionLow = floor;
+    if (projection !== null && projection < floor) projection = floor;
 
     const peerMedFinal = median(peers.map(p => p.final));
     return { d, currentTix: cPt.c, peerMed, delta, projection, projectionLow, projectionHigh, peerMedFinal, peerN: peerVals.length };
-  }, [currentToday, peers, current]);
+  }, [currentToday, peers, current, availTotal]);
 
   // Chart data: per-day series with current, peer median, peer 25/75 band
   const chartData = useMemo(() => {
