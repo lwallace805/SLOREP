@@ -84,76 +84,43 @@ export default function PacingDashboard({ initialLiveData = {} }) {
     Object.keys(initialLiveData).length ? new Date() : null
   );
 
-  // Availability total (all committed: Sold + Scanned) for in-progress shows.
-  // This is the headline number the user sees; it includes comps and subscriptions.
+  // Availability total (all committed: Sold + Scanned) and actual capacity for in-progress shows.
   const [availTotal, setAvailTotal] = useState(null);
+  const [actualCap, setActualCap] = useState(null);
 
+  // Single source of truth: instances API (availability-based, matches By-Performance page).
+  // Runs on mount and when currentName changes. Also sets a 5-minute refresh interval
+  // so the number stays current without a full page reload.
   useEffect(() => {
     const show = DATA.find(s => s.name === currentName);
-    if (!show?.inProgress) { setAvailTotal(null); return; }
-    fetch(`/api/instances?name=${encodeURIComponent(currentName)}`)
-      .then(r => r.json())
-      .then(d => {
-        if (!d.error && d.instances) {
-          const total = d.instances.reduce((s, i) => s + i.sold, 0);
-          setAvailTotal(total);
-          // Also update liveData so the milestone table shows the correct position
-          const [oy, om, od] = show.open.split('-').map(Number);
-          const openUtcMs = Date.UTC(oy, om - 1, od);
-          const todayPacific = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
-          const [ty, tm, td] = todayPacific.split('-').map(Number);
-          const todayUtcMs = Date.UTC(ty, tm - 1, td);
-          const d = Math.round((todayUtcMs - openUtcMs) / 86400000);
-          setLiveData(prev => ({...prev, [currentName]: {d, c: total}}));
-          setLiveUpdatedAt(new Date());
-        }
-      })
-      .catch(() => setAvailTotal(null));
-  }, [currentName]);
+    if (!show?.inProgress) { setAvailTotal(null); setActualCap(null); return; }
 
-  useEffect(() => {
-    // For each in-progress show, fetch live count using delta-from-orders approach.
-    // We pass the baseline (last static series point) so the route adds only
-    // new sales since that date — matching the movement-report methodology exactly.
-    const inProgress = DATA.filter(s => s.inProgress && s.series.length > 0);
-    if (!inProgress.length) return;
-
-    Promise.all(inProgress.map(show => {
-      const lastPt = show.series[show.series.length - 1];
-      // Compute the calendar date of the last series point
-      // Use UTC arithmetic to avoid local-timezone shifts
-      const [oy, om, od] = show.open.split('-').map(Number);
-      const openUtcMs = Date.UTC(oy, om - 1, od);
-      const baselineUtcMs = openUtcMs + lastPt.d * 86400000;
-      const baseDateStr = new Date(baselineUtcMs).toISOString().slice(0, 10);
-
-      const params = new URLSearchParams({
-        name: show.name,
-        baselineDate: baseDateStr,
-        baselineCount: String(lastPt.c),
-        openDate: show.open,
-      });
-      return fetch(`/api/live-pacing?${params}`)
+    function fetchInstances() {
+      fetch(`/api/instances?name=${encodeURIComponent(currentName)}`)
         .then(r => r.json())
-        .then(data => data.error ? null : [show.name, data])
-        .catch(() => null);
-    })).then(results => {
-      const newLive = {};
-      results.filter(Boolean).forEach(([name, data]) => { newLive[name] = data; });
-      if (Object.keys(newLive).length) {
-        setLiveData(prev => {
-          const merged = {...prev};
-          for (const [name, data] of Object.entries(newLive)) {
-            if (!merged[name] || merged[name].c < data.c) {
-              merged[name] = data;
-            }
+        .then(data => {
+          if (!data.error && data.instances) {
+            const total = data.instances.reduce((s, i) => s + i.sold, 0);
+            const cap = data.instances.reduce((s, i) => s + i.cap, 0);
+            setAvailTotal(total);
+            setActualCap(cap);
+            const [oy, om, od] = show.open.split('-').map(Number);
+            const openUtcMs = Date.UTC(oy, om - 1, od);
+            const todayPacific = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+            const [ty, tm, td] = todayPacific.split('-').map(Number);
+            const todayUtcMs = Date.UTC(ty, tm - 1, td);
+            const dayNum = Math.round((todayUtcMs - openUtcMs) / 86400000);
+            setLiveData(prev => ({ ...prev, [currentName]: { d: dayNum, c: total } }));
+            setLiveUpdatedAt(new Date());
           }
-          return merged;
-        });
-        setLiveUpdatedAt(new Date());
-      }
-    });
-  }, []);
+        })
+        .catch(() => { setAvailTotal(null); setActualCap(null); });
+    }
+
+    fetchInstances();
+    const timer = setInterval(fetchInstances, 5 * 60 * 1000); // refresh every 5 min
+    return () => clearInterval(timer);
+  }, [currentName]);
 
   // Merge live data into a show's series for in-progress shows.
   // Uses max(live.c, lastStaticPt.c) so the count never goes backwards,
@@ -235,7 +202,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
       return {
         d,
         currentTix: cPt ? cPt.c : null,
-        currentCapPct: cPt && current.cap ? (cPt.c / current.cap) * 100 : null,
+        currentCapPct: cPt && (actualCap ?? current.cap) ? (cPt.c / (actualCap ?? current.cap)) * 100 : null,
         peerMedTix,
         peerMedPct,
         peerMedCapPct,
@@ -247,7 +214,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
         peerMedFinal,
       };
     });
-  }, [current, peers]);
+  }, [current, peers, actualCap]);
 
   // Headline numbers: use current position (not a milestone)
   const headline = useMemo(() => {
@@ -366,7 +333,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
             <div style={{ marginTop: 10, fontSize: 12, color: "#6B6052" }}>
               <span className="mono">Opens {current.open}</span>
               {currentToday !== null && (
-                <span> · <span className="mono">{currentToday.d <= 0 ? `${Math.abs(currentToday.d)}d out` : `+${currentToday.d}d`}</span> today · {current.cap?.toLocaleString()} capacity</span>
+                <span> · <span className="mono">{currentToday.d <= 0 ? `${Math.abs(currentToday.d)}d out` : `+${currentToday.d}d`}</span> today · {(actualCap ?? current.cap)?.toLocaleString()} capacity</span>
               )}
               {current.inProgress && liveApplied[current.name] && (
                 <span style={{ marginLeft: 8 }}>
@@ -414,7 +381,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
             <Stat
               label={`Right now (${headline.d <= 0 ? Math.abs(headline.d) + "d out" : "+" + headline.d + "d into run"})`}
               value={(availTotal ?? headline.currentTix).toLocaleString()}
-              sub={`${((availTotal ?? headline.currentTix) / current.cap * 100).toFixed(1)}% of capacity`}
+              sub={`${((availTotal ?? headline.currentTix) / (actualCap ?? current.cap) * 100).toFixed(1)}% of capacity`}
             />
             <Stat
               label={`Peer median at ${headline.d <= 0 ? Math.abs(headline.d) + "d out" : "+" + headline.d + "d"}`}
@@ -435,8 +402,8 @@ export default function PacingDashboard({ initialLiveData = {} }) {
                   : headline.d < -30 ? "too early" : "—"
               }
               sub={
-                headline.projection && headline.projectionLow && headline.projectionHigh && current.cap
-                  ? `range ${(headline.projectionLow/current.cap*100).toFixed(0)}–${Math.min(100,(headline.projectionHigh/current.cap*100)).toFixed(0)}% sell-through`
+                headline.projection && headline.projectionLow && headline.projectionHigh && (actualCap ?? current.cap)
+                  ? `range ${(headline.projectionLow/(actualCap ?? current.cap)*100).toFixed(0)}–${Math.min(100,(headline.projectionHigh/(actualCap ?? current.cap)*100)).toFixed(0)}% sell-through`
                   : `peer median final: ${headline.peerMedFinal ? Math.round(headline.peerMedFinal).toLocaleString() : "—"}`
               }
             />
@@ -498,7 +465,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
                       {isNow && currentToday ? currentToday.c.toLocaleString() : (r.currentTix !== null ? r.currentTix.toLocaleString() : "—")}
                     </td>
                     <td className="mono" style={{ color: "#6B6052" }}>
-                      {isNow && currentToday ? (currentToday.c / current.cap * 100).toFixed(1) + "%" : (r.currentCapPct !== null ? r.currentCapPct.toFixed(1) + "%" : "—")}
+                      {isNow && currentToday ? (currentToday.c / (actualCap ?? current.cap) * 100).toFixed(1) + "%" : (r.currentCapPct !== null ? r.currentCapPct.toFixed(1) + "%" : "—")}
                     </td>
                     <td className="mono">{r.peerMedTix !== null ? Math.round(r.peerMedTix).toLocaleString() : "—"}</td>
                     <td className="mono" style={{ color: "#6B6052" }}>
@@ -610,16 +577,17 @@ export default function PacingDashboard({ initialLiveData = {} }) {
               {/* Current show row */}
               {(() => {
                 const currentTix = availTotal ?? (currentToday ? currentToday.c : current.final);
-                const currentCapPct = current.cap ? (currentTix / current.cap * 100).toFixed(1) + "%" : "—";
+                const cap = actualCap ?? current.cap;
+                const currentCapPct = cap ? (currentTix / cap * 100).toFixed(1) + "%" : "—";
                 const projectedFinal = headline && headline.projection ? headline.projection : null;
                 const projLow = headline?.projectionLow;
                 const projHigh = headline?.projectionHigh;
                 // Show calibrated range when available, else point or actual
-                const projectedPct = projectedFinal && current.cap
+                const projectedPct = projectedFinal && cap
                   ? (projLow && projHigh
-                      ? `${(projLow/current.cap*100).toFixed(0)}–${Math.min(100,(projHigh/current.cap*100)).toFixed(0)}%`
-                      : (projectedFinal/current.cap*100).toFixed(1)+"%")
-                  : current.inProgress ? "—" : (current.final && current.cap ? (current.final/current.cap*100).toFixed(1)+"%" : "—");
+                      ? `${(projLow/cap*100).toFixed(0)}–${Math.min(100,(projHigh/cap*100)).toFixed(0)}%`
+                      : (projectedFinal/cap*100).toFixed(1)+"%")
+                  : current.inProgress ? "—" : (current.final && cap ? (current.final/cap*100).toFixed(1)+"%" : "—");
                 const cat = CATEGORIES[current.cat] || { label: current.cat, color: "#8B7E68" };
                 return (
                   <tr style={{ background: "#F5F1E8" }}>
