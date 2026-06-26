@@ -71,6 +71,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
   const [liveUpdatedAt, setLiveUpdatedAt] = useState(
     Object.keys(initialLiveData).length ? new Date() : null
   );
+  const [gapSeries, setGapSeries] = useState({});  // { showName: [{d,c},...] }
 
   useEffect(() => {
     const inProgress = DATA.filter(s => s.inProgress && s.series.length > 0);
@@ -101,16 +102,64 @@ export default function PacingDashboard({ initialLiveData = {} }) {
     });
   }, []);
 
+  // After live data arrives, fetch the gap fill (orders between last export point and today)
+  useEffect(() => {
+    const inProgress = DATA.filter(s => s.inProgress && s.series.length > 0);
+    if (!inProgress.length) return;
+    inProgress.forEach(show => {
+      const lastPt = show.series[show.series.length - 1];
+      if (!lastPt) return;
+      // fromDate = day AFTER last export point
+      const [oy, om, od] = show.open.split('-').map(Number);
+      const openUtcMs = Date.UTC(oy, om - 1, od);
+      const lastPtUtcMs = openUtcMs + lastPt.d * 86400000;
+      const fromDate = new Date(lastPtUtcMs + 86400000).toISOString().slice(0, 10);
+      const params = new URLSearchParams({
+        name: show.name,
+        fromDate,
+        baselineCount: String(lastPt.c),
+        openDate: show.open,
+      });
+      fetch(`/api/history-fill?${params}`)
+        .then(r => r.json())
+        .then(data => {
+          if (!data.error && data.series?.length) {
+            setGapSeries(prev => ({ ...prev, [show.name]: data.series }));
+          }
+        })
+        .catch(() => {});
+    });
+  }, []);
+
   const getLiveSeries = (show) => {
     if (!show.inProgress) return show.series;
     const live = liveData[show.name];
-    if (!live || live.c <= 0) return show.series;
-    const lastPt = show.series[show.series.length - 1];
-    const c = Math.max(live.c, lastPt ? lastPt.c : 0);
-    const realCap = (live.cap > 0 ? live.cap : show.cap);
-    const p = realCap > 0 ? Math.round(c / realCap * 1000) / 10 : 0;
-    const series = show.series.filter(pt => pt.d < live.d);
-    return [...series, { d: live.d, c, p }];
+    const gap  = gapSeries[show.name]; // [{d,c}] from history-fill
+    const realCap = (live?.cap > 0 ? live.cap : show.cap);
+
+    // Start from static export points
+    let base = [...show.series];
+
+    // Merge gap series (real per-day counts from orders)
+    if (gap?.length) {
+      const maxStaticD = base[base.length - 1]?.d ?? -Infinity;
+      const newPts = gap
+        .filter(pt => pt.d > maxStaticD)
+        .map(pt => ({ d: pt.d, c: pt.c, p: realCap > 0 ? Math.round(pt.c / realCap * 1000) / 10 : 0 }));
+      base = [...base, ...newPts];
+    }
+
+    // Finally append today's live point if more recent
+    if (live?.c > 0) {
+      const maxD = base[base.length - 1]?.d ?? -Infinity;
+      if (live.d > maxD) {
+        const c = Math.max(live.c, base[base.length - 1]?.c ?? 0);
+        const p = realCap > 0 ? Math.round(c / realCap * 1000) / 10 : 0;
+        base = [...base, { d: live.d, c, p }];
+      }
+    }
+
+    return base;
   };
 
   const liveApplied = useMemo(() => {
@@ -131,7 +180,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
     cap: (liveApplied[show.name] && liveData[show.name]?.cap > 0)
       ? liveData[show.name].cap
       : show.cap,
-  })), [liveData, liveApplied]);
+  })), [liveData, liveApplied, gapSeries]);
 
   const current = liveDATA.find(s => s.name === currentName) || liveDATA[0];
   const [peerCats, setPeerCats] = useState(new Set([current.cat]));
