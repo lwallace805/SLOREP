@@ -17,10 +17,11 @@ export default function RootLayout({
       <body>
         <nav style={{
           background: "#1A1A1A",
-          padding: "0 40px",
+          padding: "0 16px",
           display: "flex",
           alignItems: "center",
           gap: 0,
+          flexWrap: "wrap",
           borderBottom: "2px solid #333",
           fontFamily: "'Inter Tight', system-ui, sans-serif",
           position: "sticky",

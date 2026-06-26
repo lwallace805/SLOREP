@@ -73,7 +73,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
   );
   const [gapSeries, setGapSeries] = useState({});  // { showName: [{d,c},...] }
 
-  useEffect(() => {
+  const fetchLive = () => {
     const inProgress = DATA.filter(s => s.inProgress && s.series.length > 0);
     if (!inProgress.length) return;
     Promise.all(inProgress.map(show => {
@@ -100,6 +100,13 @@ export default function PacingDashboard({ initialLiveData = {} }) {
         setLiveUpdatedAt(new Date());
       }
     });
+  };
+
+  useEffect(() => {
+    fetchLive();
+    // Refresh live data every 5 minutes
+    const interval = setInterval(fetchLive, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   // After live data arrives, fetch the gap fill (orders between last export point and today)
@@ -219,8 +226,10 @@ export default function PacingDashboard({ initialLiveData = {} }) {
       const peerMedFinal = median(peerFinals);
       const peerMedCapPct = median(peerCapPct);
       const MIN_PEERS = 3;
-      const delta = (cPt && peerMedTix && peerData.length >= MIN_PEERS)
-        ? ((cPt.c - peerMedTix) / peerMedTix) * 100 : null;
+      // Delta: compare % of capacity (not raw tickets) so shows with different house sizes are comparable
+      const currentCapPctHere = cPt && current.cap ? (cPt.c / current.cap * 100) : null;
+      const delta = (currentCapPctHere !== null && peerMedCapPct !== null && peerData.length >= MIN_PEERS)
+        ? currentCapPctHere - peerMedCapPct : null;
       const projection = (cPt && peerMedPct && peerMedPct > 0 && d >= -30 && peerData.length >= MIN_PEERS)
         ? Math.round(cPt.c / (peerMedPct / 100)) : null;
       return {
@@ -244,7 +253,15 @@ export default function PacingDashboard({ initialLiveData = {} }) {
     if (!cPt) return null;
     const peerMed = median(peerVals.map(v => v.c));
     const peerMedPct = median(peerVals.map(v => v.p));
-    const delta = (peerMed && peerVals.length >= 3) ? ((cPt.c - peerMed) / peerMed) * 100 : null;
+    // Cap-based delta: current % of capacity minus peer median % of capacity
+    const peerWithCap = peers.map(p => {
+      const pt = lookupAt(p.series, d);
+      return pt && p.cap ? pt.c / p.cap * 100 : null;
+    }).filter(v => v !== null);
+    const peerMedCapPct = median(peerWithCap);
+    const currentCapPctNow = current.cap ? cPt.c / current.cap * 100 : null;
+    const delta = (currentCapPctNow !== null && peerMedCapPct !== null && peerVals.length >= 3)
+      ? currentCapPctNow - peerMedCapPct : null;
     const rawProjection = (peerMedPct && peerMedPct > 0 && d >= -30 && peerVals.length >= 3)
       ? Math.round(cPt.c / (peerMedPct / 100)) : null;
     const cal = PROJ_CALIBRATION[current.cat] || { bias: 0.10, mape: 0.25 };
@@ -311,9 +328,24 @@ export default function PacingDashboard({ initialLiveData = {} }) {
         table.ms tr.now td.lbl { color: #065f46; font-weight: 600; }
         table.ms tr:not(.now):not(.future):hover td { background: #f7f2eb; }
         @keyframes pd-pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+        .pd-stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 20px; }
+        .pd-two-col { display: grid; grid-template-columns: 1fr 320px; gap: 18px; align-items: start; }
+        .pd-outer { max-width: 1340px; margin: 0 auto; padding: 32px 40px; }
+        @media (max-width: 900px) {
+          .pd-stat-grid { grid-template-columns: repeat(2,1fr) !important; }
+          .pd-two-col { grid-template-columns: 1fr !important; }
+          .pd-outer { padding: 20px 16px !important; }
+          table.ms th, table.ms td { padding: 7px 8px !important; font-size: 11px !important; }
+        }
+        @media (max-width: 540px) {
+          .pd-stat-grid { grid-template-columns: 1fr 1fr !important; }
+          .pd-two-col { grid-template-columns: 1fr !important; }
+          table.ms { font-size: 11px; }
+          table.ms th:nth-child(n+5), table.ms td:nth-child(n+5) { display: none; }
+        }
       `}</style>
 
-      <div style={{ maxWidth: 1340, margin: "0 auto", padding: "32px 40px" }}>
+      <div className="pd-outer">
 
         {/* Header */}
         <div style={{ borderBottom: "1px solid #e4ddd5", paddingBottom: 20, marginBottom: 22 }}>
@@ -355,7 +387,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
 
         {/* 4 stat cards */}
         {headline && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
+          <div className="pd-stat-grid">
             <StatCard accent="#0f766e" label="Run Total Sold"
               value={headline.currentTix.toLocaleString()}
               sub={`of ${current.cap?.toLocaleString()} capacity`} />
@@ -367,15 +399,16 @@ export default function PacingDashboard({ initialLiveData = {} }) {
               <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, borderRadius: "12px 12px 0 0", background: "#d97706" }} />
               <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.11em", textTransform: "uppercase", color: "#7a7570", marginBottom: 7 }}>Vs Peer Median</div>
               <div className="pd-serif" style={{ fontSize: 26, fontWeight: 700, lineHeight: 1, paddingTop: 3, color: "#1c1a18" }}>
-                {headline.delta != null ? (headline.delta > 0 ? "+" : "") + headline.delta.toFixed(1) + "%" : "—"}
+                {headline.delta != null ? (headline.delta > 0 ? "+" : "") + headline.delta.toFixed(1) + "pp" : "—"}
               </div>
+              <div style={{ fontSize: 10.5, color: "#7a7570", marginTop: 3 }}>% capacity vs peer median</div>
               {headline.delta != null ? (
                 <div style={{
                   display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10.5, fontWeight: 600, marginTop: 6, padding: "3px 8px", borderRadius: 100,
-                  background: headline.delta > 5 ? "#ccfbf1" : headline.delta < -5 ? "#fee2e2" : "#f1f5f9",
-                  color: headline.delta > 5 ? "#0f766e" : headline.delta < -5 ? "#dc2626" : "#475569"
+                  background: headline.delta > 3 ? "#ccfbf1" : headline.delta < -3 ? "#fee2e2" : "#f1f5f9",
+                  color: headline.delta > 3 ? "#0f766e" : headline.delta < -3 ? "#dc2626" : "#475569"
                 }}>
-                  {headline.delta > 5 ? "\u2191 Ahead of pace" : headline.delta < -5 ? "\u2193 Behind pace" : "On pace"}
+                  {headline.delta > 3 ? "\u2191 Ahead of pace" : headline.delta < -3 ? "\u2193 Behind pace" : "On pace"}
                 </div>
               ) : (
                 <div style={{ fontSize: 11.5, color: "#7a7570", marginTop: 5 }}>need \u22653 peers ({headline.peerN} now)</div>
@@ -411,7 +444,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
         )}
 
         {/* Two-column layout: main content + right sidebar */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 18, alignItems: "start" }}>
+        <div className="pd-two-col">
 
         {/* LEFT COLUMN */}
         <div>
@@ -503,7 +536,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
                 <th>% of capacity</th>
                 <th>Peer median<br/><span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#bbb1a0" }}>tickets</span></th>
                 <th>Peer % of final<br/><span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#bbb1a0" }}>median</span></th>
-                <th>Δ vs peer median</th>
+                <th>Δ cap% vs peers</th>
                 <th>Peer range</th>
               </tr>
             </thead>
@@ -542,9 +575,9 @@ export default function PacingDashboard({ initialLiveData = {} }) {
                       </td>
                       <td style={{
                         fontWeight: 600, fontVariantNumeric: "tabular-nums",
-                        color: r.delta === null ? "#bbb1a0" : r.delta > 5 ? "#0f766e" : r.delta < -5 ? "#b91c1c" : "#475569"
+                        color: r.delta === null ? "#bbb1a0" : r.delta > 3 ? "#0f766e" : r.delta < -3 ? "#b91c1c" : "#475569"
                       }}>
-                        {r.delta !== null ? (r.delta > 0 ? "+" : "") + r.delta.toFixed(1) + "%" : "—"}
+                        {r.delta !== null ? (r.delta > 0 ? "+" : "") + r.delta.toFixed(1) + "pp" : "—"}
                       </td>
                       <td style={{ color: "#7a7570", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
                         {r.peerMin !== null ? `${Math.round(r.peerMin).toLocaleString()}–${Math.round(r.peerMax).toLocaleString()}` : "—"}

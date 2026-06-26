@@ -171,9 +171,15 @@ export default function InstanceView({ initialData = null }) {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
         body { margin: 0; }
+        .iv-outer { max-width: 960px; margin: 0 auto; padding: 32px 40px; }
+        .iv-stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 20px; }
+        @media (max-width: 700px) {
+          .iv-outer { padding: 20px 16px !important; }
+          .iv-stat-grid { grid-template-columns: 1fr 1fr !important; }
+        }
       `}</style>
 
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '32px 40px' }}>
+      <div className="iv-outer">
 
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
@@ -230,7 +236,7 @@ export default function InstanceView({ initialData = null }) {
 
         {/* Stat cards */}
         {data && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+          <div className="iv-stat-grid">
             <StatCard accent="#0f766e" label="Run Total Sold" value={totalSold.toLocaleString()} sub={`of ${totalCap.toLocaleString()} capacity`} />
             <StatCard accent="#b02629" label="Overall Fill" value={overallPct + '%'} sub="all performances" valueColor={overallFillColor.text} />
             <StatCard accent="#d97706" label="Upcoming" value={upcoming.length.toString()} sub={`${upcomingTotalSold} / ${upcomingTotalCap} sold`} />
