@@ -60,10 +60,16 @@ function percentile(arr, p) {
 
 export default function PacingDashboard({ initialLiveData = {} }) {
   const defaultCurrent = useMemo(() => {
-    const gn = DATA.find(s => s.name === "A Grand Night for Singing");
-    if (gn) return gn.name;
+    // Pick the most recently-opened inProgress show (last in array by open date).
+    // Falls back to the show with an open date closest to today (past or future),
+    // then finally the last show in the array.
     const ip = DATA.filter(s => s.inProgress);
     if (ip.length) return ip[ip.length - 1].name;
+    const today = Date.now();
+    const closest = DATA.slice().sort((a, b) =>
+      Math.abs(new Date(a.open) - today) - Math.abs(new Date(b.open) - today)
+    )[0];
+    if (closest) return closest.name;
     return DATA[DATA.length - 1].name;
   }, []);
   const [currentName, setCurrentName] = useState(defaultCurrent);
