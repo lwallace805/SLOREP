@@ -271,10 +271,11 @@ export default function PacingDashboard({ initialLiveData = {} }) {
     const rawProjection = (peerMedPct && peerMedPct > 0 && d >= -30 && peerVals.length >= 3)
       ? Math.round(cPt.c / (peerMedPct / 100)) : null;
     const cal = PROJ_CALIBRATION[current.cat] || { bias: 0.10, mape: 0.25 };
-    const projection = rawProjection ? Math.round(rawProjection / (1 + cal.bias)) : null;
+    const cap = current.cap || Infinity;
+    const projection = rawProjection ? Math.min(cap, Math.round(rawProjection / (1 + cal.bias))) : null;
     const rawLow = rawProjection ? Math.round(rawProjection / (1 + cal.bias) * (1 - cal.mape)) : null;
-    const projectionLow  = rawLow != null ? Math.max(rawLow, cPt.c) : null;
-    const projectionHigh = rawProjection ? Math.round(rawProjection / (1 + cal.bias) * (1 + cal.mape)) : null;
+    const projectionLow  = rawLow != null ? Math.min(cap, Math.max(rawLow, cPt.c)) : null;
+    const projectionHigh = rawProjection ? Math.min(cap, Math.round(rawProjection / (1 + cal.bias) * (1 + cal.mape))) : null;
     const peerMedFinal = median(peers.map(p => p.final));
     return { d, currentTix: cPt.c, peerMed, delta, projection, projectionLow, projectionHigh, peerMedFinal, peerN: peerVals.length };
   }, [currentToday, peers, current]);
