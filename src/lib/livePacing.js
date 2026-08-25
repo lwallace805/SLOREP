@@ -164,20 +164,23 @@ export async function getPerInstanceCounts(eventId, saleStartDate) {
 }
 
 /**
- * For each in-progress show in the provided list, fetch the live current count.
- * Returns { [showName]: { d, c } }
+ * Fetch the live current count for each show handed in.
+ * Returns { [showName]: { d, c, cap } }
  *
- * @param {Array<{name, open, series, inProgress}>} shows - the DATA array (or subset)
+ * @param {Array<{name, open, series}>} shows - shows to pull, already filtered
  */
 export async function getLivePacingData(shows) {
-  const inProgress = shows.filter(s => s.inProgress && s.series.length > 0);
-  if (!inProgress.length) return {};
+  // Callers decide which shows are worth pulling — see src/lib/showStatus.js.
+  // This used to filter on show.inProgress, a hand-maintained flag in the data
+  // file that was reliably out of date.
+  const targets = (shows || []).filter(s => s.series?.length > 0);
+  if (!targets.length) return {};
 
   const events = await getEvents();
   const today = getPacificDateString();
   const result = {};
 
-  await Promise.all(inProgress.map(async (show) => {
+  await Promise.all(targets.map(async (show) => {
     try {
       const event = events.find(e => e.name?.toLowerCase() === show.name.toLowerCase());
       if (!event) return;

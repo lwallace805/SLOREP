@@ -7,6 +7,7 @@ import {
 } from "recharts";
 
 import { DATA } from '@/data/pacingData';
+import { isOnSale, statusOf, currentShowName, pacificToday, daysFromOpen } from '@/lib/showStatus';
 import TicketMixBar from './TicketMixBar';
 
 const CATEGORIES = {
@@ -58,20 +59,23 @@ function percentile(arr, p) {
   return s[lo] + (s[hi] - s[lo]) * (idx - lo);
 }
 
-export default function PacingDashboard({ initialLiveData = {} }) {
-  const defaultCurrent = useMemo(() => {
-    // Pick the most recently-opened inProgress show (last in array by open date).
-    // Falls back to the show with an open date closest to today (past or future),
-    // then finally the last show in the array.
-    const ip = DATA.filter(s => s.inProgress);
-    if (ip.length) return ip[ip.length - 1].name;
-    const today = Date.now();
-    const closest = DATA.slice().sort((a, b) =>
-      Math.abs(new Date(a.open) - today) - Math.abs(new Date(b.open) - today)
-    )[0];
-    if (closest) return closest.name;
-    return DATA[DATA.length - 1].name;
-  }, []);
+export default function PacingDashboard({ initialLiveData = {}, runWindows = {} }) {
+  // Lifecycle comes from the run window, never from the data file's inProgress
+  // flag — see src/lib/showStatus.js for why.
+  const today = useMemo(() => pacificToday(), []);
+  const onSaleNames = useMemo(
+    () => new Set(DATA.filter(s => isOnSale(s, runWindows, today)).map(s => s.name)),
+    [runWindows, today]
+  );
+  // `show` here may be a liveDATA copy, so match on name rather than identity.
+  const onSale = (show) => !!show && onSaleNames.has(show.name);
+
+  // Open the dashboard on the production being marketed right now: of the shows
+  // whose run has not ended, the one opening soonest.
+  const defaultCurrent = useMemo(
+    () => currentShowName(DATA, runWindows, today) || DATA[DATA.length - 1].name,
+    [runWindows, today]
+  );
   const [currentName, setCurrentName] = useState(defaultCurrent);
   const [liveData, setLiveData] = useState(initialLiveData);
   const [liveUpdatedAt, setLiveUpdatedAt] = useState(
@@ -79,73 +83,74 @@ export default function PacingDashboard({ initialLiveData = {} }) {
   );
   const [gapSeries, setGapSeries] = useState({});  // { showName: [{d,c},...] }
 
-  const fetchLive = () => {
-    const inProgress = DATA.filter(s => s.inProgress && s.series.length > 0);
-    if (!inProgress.length) return;
-    Promise.all(inProgress.map(show => {
-      const lastPt = show.series[show.series.length - 1];
-      const [oy, om, od] = show.open.split('-').map(Number);
-      const openUtcMs = Date.UTC(oy, om - 1, od);
-      const baselineUtcMs = openUtcMs + lastPt.d * 86400000;
-      const baseDateStr = new Date(baselineUtcMs).toISOString().slice(0, 10);
+  // Live data is fetched for the selected show only. Fetching every on-sale
+  // show on mount meant seven Spektrix round-trips for six charts nobody was
+  // looking at; selecting a show is what makes its numbers worth pulling.
+  const selectedShow = DATA.find(s => s.name === currentName);
+  const selectedIsLive = onSale(selectedShow) && selectedShow?.series.length > 0;
+
+  useEffect(() => {
+    if (!selectedIsLive) return;
+    let cancelled = false;
+    const show = selectedShow;
+    const lastPt = show.series[show.series.length - 1];
+    const [oy, om, od] = show.open.split('-').map(Number);
+    const openUtcMs = Date.UTC(oy, om - 1, od);
+    const baseDateStr = new Date(openUtcMs + lastPt.d * 86400000).toISOString().slice(0, 10);
+
+    const fetchLive = () => {
       const params = new URLSearchParams({
         name: show.name,
         baselineDate: baseDateStr,
         baselineCount: String(lastPt.c),
         openDate: show.open,
       });
-      return fetch(`/api/live-pacing?${params}`)
-        .then(r => r.json())
-        .then(data => data.error ? null : [show.name, data])
-        .catch(() => null);
-    })).then(results => {
-      const newLive = {};
-      results.filter(Boolean).forEach(([name, data]) => { newLive[name] = data; });
-      if (Object.keys(newLive).length) {
-        setLiveData(newLive);
-        setLiveUpdatedAt(new Date());
-      }
-    });
-  };
-
-  useEffect(() => {
-    fetchLive();
-    // Refresh live data every 5 minutes
-    const interval = setInterval(fetchLive, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // After live data arrives, fetch the gap fill (orders between last export point and today)
-  useEffect(() => {
-    const inProgress = DATA.filter(s => s.inProgress && s.series.length > 0);
-    if (!inProgress.length) return;
-    inProgress.forEach(show => {
-      const lastPt = show.series[show.series.length - 1];
-      if (!lastPt) return;
-      // fromDate = day AFTER last export point
-      const [oy, om, od] = show.open.split('-').map(Number);
-      const openUtcMs = Date.UTC(oy, om - 1, od);
-      const lastPtUtcMs = openUtcMs + lastPt.d * 86400000;
-      const fromDate = new Date(lastPtUtcMs + 86400000).toISOString().slice(0, 10);
-      const params = new URLSearchParams({
-        name: show.name,
-        fromDate,
-        baselineCount: String(lastPt.c),
-        openDate: show.open,
-      });
-      fetch(`/api/history-fill?${params}`)
+      fetch(`/api/live-pacing?${params}`)
         .then(r => r.json())
         .then(data => {
-          if (!data.error && data.series?.length) {
-            setGapSeries(prev => ({ ...prev, [show.name]: data.series }));
-          }
+          if (cancelled || data.error) return;
+          setLiveData(prev => ({ ...prev, [show.name]: data }));
+          setLiveUpdatedAt(new Date());
         })
         .catch(() => {});
+    };
+
+    fetchLive();
+    const interval = setInterval(fetchLive, 5 * 60 * 1000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [currentName, selectedIsLive]);
+
+  // Fill the gap between the last static export point and today with real
+  // per-day order counts, so the milestone rows in between are measured rather
+  // than interpolated.
+  useEffect(() => {
+    if (!selectedIsLive) return;
+    let cancelled = false;
+    const show = selectedShow;
+    const lastPt = show.series[show.series.length - 1];
+    const [oy, om, od] = show.open.split('-').map(Number);
+    const openUtcMs = Date.UTC(oy, om - 1, od);
+    const fromDate = new Date(openUtcMs + (lastPt.d + 1) * 86400000).toISOString().slice(0, 10);
+    if (fromDate > today) return;
+
+    const params = new URLSearchParams({
+      name: show.name,
+      fromDate,
+      baselineCount: String(lastPt.c),
+      openDate: show.open,
     });
-  }, []);
+    fetch(`/api/history-fill?${params}`)
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled || data.error || !data.series?.length) return;
+        setGapSeries(prev => ({ ...prev, [show.name]: data.series }));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [currentName, selectedIsLive, today]);
 
   const getLiveSeries = (show) => {
-    if (!show.inProgress) return show.series;
+    if (!onSale(show)) return show.series;
     const live = liveData[show.name];
     const gap  = gapSeries[show.name]; // [{d,c}] from history-fill
     const realCap = (live?.cap > 0 ? live.cap : show.cap);
@@ -178,22 +183,33 @@ export default function PacingDashboard({ initialLiveData = {} }) {
   const liveApplied = useMemo(() => {
     const applied = {};
     DATA.forEach(show => {
-      if (!show.inProgress) return;
+      if (!onSale(show)) return;
       const live = liveData[show.name];
       if (live && live.c > 0) applied[show.name] = true;
     });
     return applied;
   }, [liveData]);
 
-  const liveDATA = useMemo(() => DATA.map(show => ({
-    ...show,
-    series: getLiveSeries(show),
-    final: liveApplied[show.name] ? Math.max(liveData[show.name].c, show.final) : show.final,
-    // Use real cap from Spektrix when available (excludes cancelled performances)
-    cap: (liveApplied[show.name] && liveData[show.name]?.cap > 0)
-      ? liveData[show.name].cap
-      : show.cap,
-  })), [liveData, liveApplied, gapSeries]);
+  const liveDATA = useMemo(() => DATA.map(show => {
+    const series = getLiveSeries(show);
+    // For a show still on sale the data file's `final` is not a final — it is
+    // whatever had sold on the day of the last export. The Father's said 31,
+    // frozen on 2026-06-01. Use the live count instead, and fall back to the
+    // last point of the series rather than that stale number.
+    const soldSoFar = Math.max(
+      liveApplied[show.name] ? liveData[show.name].c : 0,
+      series[series.length - 1]?.c ?? 0
+    );
+    return {
+      ...show,
+      series,
+      final: onSale(show) ? soldSoFar : show.final,
+      // Use real cap from Spektrix when available (excludes cancelled performances)
+      cap: (liveApplied[show.name] && liveData[show.name]?.cap > 0)
+        ? liveData[show.name].cap
+        : show.cap,
+    };
+  }), [liveData, liveApplied, gapSeries, onSaleNames]);
 
   const current = liveDATA.find(s => s.name === currentName) || liveDATA[0];
   const [peerCats, setPeerCats] = useState(new Set([current.cat]));
@@ -204,10 +220,24 @@ export default function PacingDashboard({ initialLiveData = {} }) {
     s.name !== currentName
     && peerCats.has(s.cat)
     && peerSeasons.has(s.season)
-    && (!excludeInProgress || !s.inProgress)
-  ), [currentName, peerCats, peerSeasons, excludeInProgress]);
+    && (!excludeInProgress || !onSale(s))
+  ), [liveDATA, currentName, peerCats, peerSeasons, excludeInProgress, onSaleNames]);
+
+  // Only a closed run has a final worth taking a median of. A show still on
+  // sale would drag the benchmark down with a part-sold total.
+  const closedPeers = useMemo(() => peers.filter(p => !onSale(p)), [peers, onSaleNames]);
 
   const currentToday = current.series[current.series.length - 1] || null;
+
+  // The last point of the series is only "today" if it actually is today. For a
+  // show still on sale, today's day-number comes from the calendar; when live
+  // data has not arrived, the newest point can be months behind it. Presenting
+  // a stale export as the current position is how The Father came to read as
+  // "31 tickets sold, 88 days before opening" three days out from opening.
+  const trueTodayD = onSale(current) ? daysFromOpen(current.open, today) : null;
+  const staleBy = (trueTodayD !== null && currentToday)
+    ? trueTodayD - currentToday.d : 0;
+  const isStale = staleBy > 1;
 
   const dynamicMilestones = useMemo(() => {
     if (!currentToday) return MILESTONE_BASE;
@@ -221,11 +251,12 @@ export default function PacingDashboard({ initialLiveData = {} }) {
       const cPt = lookupAt(current.series, d, true);
       const peerData = peers.map(p => {
         const pt = lookupAt(p.series, d, true);
-        return pt ? { tix: pt.c, pct: pt.p, name: p.name, final: p.final, cap: p.cap, capPct: (pt.c / p.cap) * 100 } : null;
+        // A peer still on sale has no final to contribute to the benchmark.
+        return pt ? { tix: pt.c, pct: pt.p, name: p.name, final: onSale(p) ? null : p.final, cap: p.cap, capPct: (pt.c / p.cap) * 100 } : null;
       }).filter(Boolean);
       const peerTix = peerData.map(v => v.tix);
       const peerPct = peerData.map(v => v.pct);
-      const peerFinals = peerData.map(v => v.final);
+      const peerFinals = peerData.map(v => v.final).filter(v => v != null);
       const peerCapPct = peerData.map(v => v.capPct);
       const peerMedTix = median(peerTix);
       const peerMedPct = median(peerPct);
@@ -276,9 +307,9 @@ export default function PacingDashboard({ initialLiveData = {} }) {
     const rawLow = rawProjection ? Math.round(rawProjection / (1 + cal.bias) * (1 - cal.mape)) : null;
     const projectionLow  = rawLow != null ? Math.min(cap, Math.max(rawLow, cPt.c)) : null;
     const projectionHigh = rawProjection ? Math.min(cap, Math.round(rawProjection / (1 + cal.bias) * (1 + cal.mape))) : null;
-    const peerMedFinal = median(peers.map(p => p.final));
+    const peerMedFinal = median(closedPeers.map(p => p.final));
     return { d, currentTix: cPt.c, peerMed, delta, projection, projectionLow, projectionHigh, peerMedFinal, peerN: peerVals.length };
-  }, [currentToday, peers, current]);
+  }, [currentToday, peers, closedPeers, current]);
 
   const chartData = useMemo(() => {
     const xMin = -120, xMax = 28;
@@ -304,12 +335,8 @@ export default function PacingDashboard({ initialLiveData = {} }) {
   const toggleSeason = s => { const n = new Set(peerSeasons); n.has(s) ? n.delete(s) : n.add(s); setPeerSeasons(n); };
   const sortedShows = [...liveDATA].sort((a, b) => b.open.localeCompare(a.open));
   const catColor = CATEGORIES[current.cat]?.color || "#7a7570";
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const showStatus = (s) => {
-    if (s.inProgress) return "In Progress";
-    if (s.open > todayStr) return "Upcoming";
-    return "Past";
-  };
+  const STATUS_LABEL = { running: "In Progress", upcoming: "On Sale", past: "Past" };
+  const showStatus = (s) => STATUS_LABEL[statusOf(s, runWindows, today)];
 
   const projRangeBar = useMemo(() => {
     if (!headline?.projection || !headline?.projectionLow || !headline?.projectionHigh || !current.cap) return null;
@@ -380,10 +407,16 @@ export default function PacingDashboard({ initialLiveData = {} }) {
           </select>
           <span style={{ fontSize: 11.5, color: "#bbb1a0" }}>
             {current.season} · {CATEGORIES[current.cat]?.label || current.cat}
-            {currentToday !== null && ` · ${currentToday.d <= 0 ? Math.abs(currentToday.d) + "d out" : "+" + currentToday.d + "d"} today`}
+            {trueTodayD !== null && ` · ${trueTodayD <= 0 ? Math.abs(trueTodayD) + "d out" : "+" + trueTodayD + "d"} today`}
+            {trueTodayD === null && currentToday !== null && ` · closed`}
             {current.cap ? ` · ${current.cap.toLocaleString()} cap` : ""}
           </span>
-          {current.inProgress && liveApplied[current.name] && (
+          {isStale && (
+            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "#b45309", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 100, padding: "3px 9px" }}>
+              {`Live data unavailable · figures as of ${staleBy} ${staleBy === 1 ? "day" : "days"} ago`}
+            </span>
+          )}
+          {onSale(current) && liveApplied[current.name] && (
             <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#22c55e", background: "rgba(34,197,94,.12)", border: "1px solid rgba(34,197,94,.25)", borderRadius: 100, padding: "3px 9px" }}>
               <span style={{ width: 5, height: 5, background: "#22c55e", borderRadius: "50%", animation: "pd-pulse 2s infinite", display: "inline-block" }} />
               Live
@@ -469,7 +502,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
             ))}
             <label style={{ marginLeft: 8, fontSize: 11, color: "#7a7570", display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
               <input type="checkbox" checked={excludeInProgress} onChange={e => setExcludeInProgress(e.target.checked)} />
-              exclude in-progress
+              exclude shows still on sale
             </label>
           </div>
           <div style={{ padding: "8px 16px", fontSize: 12, color: "#7a7570" }}>
@@ -514,8 +547,8 @@ export default function PacingDashboard({ initialLiveData = {} }) {
                   <ReferenceLine key={d} x={d} stroke="#e4ddd5" strokeDasharray="2 4" />
                 ))}
                 <ReferenceLine x={0} stroke="#1c1a18" strokeWidth={1.2} label={{ value: "Opening", position: "top", fontSize: 10, fill: "#1c1a18" }} />
-                {todayD !== null && current.inProgress && (
-                  <ReferenceLine x={todayD} stroke="#0f766e" strokeWidth={1.2} strokeDasharray="4 2"
+                {onSale(current) && (trueTodayD ?? todayD) !== null && (
+                  <ReferenceLine x={trueTodayD ?? todayD} stroke="#0f766e" strokeWidth={1.2} strokeDasharray="4 2"
                     label={{ value: "Today", position: "top", fontSize: 10, fill: "#0f766e" }} />
                 )}
                 <Area type="monotone" dataKey="peerP25" stackId="band" stroke="none" fill="transparent" />
@@ -551,7 +584,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
               {milestoneRows.map((r, ri) => {
                 const isFuture = r.currentTix === null && todayD !== null && todayD < r.d;
                 const lastReachedMs = [...milestoneRows].filter(x => x.currentTix !== null).pop();
-                const isNow = current.inProgress && r === lastReachedMs;
+                const isNow = onSale(current) && r === lastReachedMs;
                 const lowConfidence = r.peerN < 3 && !isFuture;
                 const divider = r.d === 7 ? (
                   <tr key="divider-opening">
@@ -633,14 +666,14 @@ export default function PacingDashboard({ initialLiveData = {} }) {
                   ? (projLow && projHigh
                       ? `${(projLow/current.cap*100).toFixed(0)}–${Math.min(100,(projHigh/current.cap*100)).toFixed(0)}%`
                       : (projectedFinal/current.cap*100).toFixed(1)+"%")
-                  : current.inProgress ? "—" : (current.final && current.cap ? (current.final/current.cap*100).toFixed(1)+"%" : "—");
+                  : onSale(current) ? "—" : (current.final && current.cap ? (current.final/current.cap*100).toFixed(1)+"%" : "—");
                 const cat = CATEGORIES[current.cat] || { label: current.cat, color: "#7a7570" };
                 return (
                   <tr style={{ background: "#f7f2eb" }}>
                     <td className="lbl" style={{ fontWeight: 700 }}>
                       {current.name}
                       <span style={{ marginLeft: 6, fontSize: 10, color: "#1c1a18", background: "#e4ddd5", padding: "1px 5px", borderRadius: 3, fontWeight: 600, letterSpacing: "0.05em" }}>THIS SHOW</span>
-                      {current.inProgress && <span style={{ marginLeft: 4, fontSize: 10, color: "#b45309", background: "#fef3c7", padding: "1px 5px", borderRadius: 3, fontWeight: 600, letterSpacing: "0.05em" }}>IN PROGRESS</span>}
+                      {onSale(current) && <span style={{ marginLeft: 4, fontSize: 10, color: "#b45309", background: "#fef3c7", padding: "1px 5px", borderRadius: 3, fontWeight: 600, letterSpacing: "0.05em" }}>{showStatus(current).toUpperCase()}</span>}
                     </td>
                     <td className="lbl">
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -653,7 +686,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
                     <td style={{ fontVariantNumeric: "tabular-nums" }}>{current.cap?.toLocaleString()}</td>
                     <td style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
                       {currentTix.toLocaleString()}
-                      {current.inProgress && currentToday && <span style={{ fontWeight: 400, color: "#7a7570", fontSize: 11, marginLeft: 4 }}>now</span>}
+                      {onSale(current) && currentToday && <span style={{ fontWeight: 400, color: "#7a7570", fontSize: 11, marginLeft: 4 }}>now</span>}
                     </td>
                     <td style={{ color: "#7a7570", fontVariantNumeric: "tabular-nums" }}>{currentCapPct}</td>
                     <td style={{ fontWeight: 600, color: projectedFinal ? "#0f766e" : "#7a7570", fontVariantNumeric: "tabular-nums" }}>
@@ -672,7 +705,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
                   return (
                     <tr key={p.name}>
                       <td className="lbl" style={{ fontWeight: 500 }}>
-                        {p.name}{p.inProgress ? <span style={{ marginLeft: 6, fontSize: 10, color: "#b45309", background: "#fef3c7", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>IN PROGRESS</span> : ""}
+                        {p.name}{onSale(p) ? <span style={{ marginLeft: 6, fontSize: 10, color: "#b45309", background: "#fef3c7", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>{showStatus(p).toUpperCase()}</span> : ""}
                       </td>
                       <td className="lbl">
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -717,7 +750,7 @@ export default function PacingDashboard({ initialLiveData = {} }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
           {/* Ticket Mix */}
-          {current.inProgress && (
+          {onSale(current) && (
             <div style={{ background: "#ffffff", border: "1px solid #e4ddd5", borderRadius: 12, padding: "16px 18px" }}>
               <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7a7570", fontWeight: 600, marginBottom: 4 }}>Ticket Mix</div>
               <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 15, fontWeight: 600, color: "#1c1a18", marginBottom: 12 }}>{current.name}</div>

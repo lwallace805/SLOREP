@@ -58,9 +58,12 @@ export async function GET(request) {
     const today = new Date().toISOString().slice(0, 10);
     const scanFrom = fromDate > today ? today : fromDate;
 
-    // Limit scan to 60 days to avoid timeout
-    const maxScanEnd = addDays(scanFrom, 60);
+    // Cap the scan so a long gap can't hang the request. 120 days covers the
+    // usual distance between a season export and today; 60 did not, and The
+    // Father's gap (2026-06-02 onward) fell straight through it.
+    const maxScanEnd = addDays(scanFrom, 120);
     const scanTo = today < maxScanEnd ? today : maxScanEnd;
+    const truncated = scanTo < today;
 
     const base = `https://system.spektrix.com/${process.env.SPEKTRIX_CLIENT_NAME}/api/v3`;
 
@@ -109,13 +112,18 @@ export async function GET(request) {
       cur = addDays(cur, 1);
     }
 
-    // Always include today's final point
+    // Close the series at today only when the scan actually reached today.
+    // Stamping the cumulative-as-of-scanTo onto today's date understates the
+    // count, and — because it lands on the same day number as the live
+    // availability point — it used to suppress that point instead of being
+    // replaced by it. When truncated, the series simply ends at scanTo and the
+    // caller appends the true live total.
     const todayD = daysBetween(openDate, today);
-    if (!series.length || series[series.length - 1].d !== todayD) {
+    if (!truncated && (!series.length || series[series.length - 1].d !== todayD)) {
       series.push({ d: todayD, c: cumulative });
     }
 
-    return NextResponse.json({ series, total: cumulative, scanFrom, scanTo });
+    return NextResponse.json({ series, total: cumulative, scanFrom, scanTo, truncated });
   } catch (err) {
     console.error('history-fill error:', err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });

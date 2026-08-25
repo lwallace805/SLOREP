@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { currentShowFromEvents, pacificToday } from '@/lib/showStatus';
 
-const TODAY = new Date().toISOString().slice(0, 10);
+const TODAY = pacificToday();
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -46,7 +47,11 @@ function StatCard({ accent, label, value, sub, valueColor }) {
 
 export default function InstanceView({ initialData = null }) {
   const [shows, setShows] = useState([]);
-  const [selectedName, setSelectedName] = useState('A Grand Night for Singing');
+  // The server pre-render already resolved the current production; until the
+  // show list arrives, follow it rather than a hardcoded title.
+  const [selectedName, setSelectedName] = useState(initialData?.name ?? '');
+  // Once the viewer picks a show themselves, stop overriding their choice.
+  const userPicked = useRef(false);
   const [data, setData] = useState(initialData);
   const [loadingShows, setLoadingShows] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
@@ -57,10 +62,14 @@ export default function InstanceView({ initialData = null }) {
     fetch('/api/shows')
       .then((r) => r.json())
       .then((shows) => {
-        if (Array.isArray(shows)) {
-          setShows(shows);
-          const names = shows.map((s) => s.name);
-          if (!names.includes(selectedName) && names.length > 0) setSelectedName(names[0]);
+        if (!Array.isArray(shows) || !shows.length) return;
+        setShows(shows);
+        if (userPicked.current) return;
+        const names = shows.map((s) => s.name);
+        // Default to the production being marketed right now: of the shows
+        // whose run has not ended, the one opening soonest.
+        if (!names.includes(selectedName)) {
+          setSelectedName(currentShowFromEvents(shows, TODAY) || names[0]);
         }
       })
       .catch((e) => setError(e.message))
@@ -194,7 +203,7 @@ export default function InstanceView({ initialData = null }) {
           <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7a7570', whiteSpace: 'nowrap' }}>Show</span>
           <select
             value={selectedName}
-            onChange={(e) => setSelectedName(e.target.value)}
+            onChange={(e) => { userPicked.current = true; setSelectedName(e.target.value); }}
             style={{
               fontFamily: "'Inter', sans-serif", fontSize: 13.5, fontWeight: 500, color: '#1c1a18',
               background: '#ffffff', border: '1.5px solid #e4ddd5', borderRadius: 6,

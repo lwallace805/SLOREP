@@ -1,7 +1,6 @@
 import InstanceView from "@/components/InstanceView";
 import { getEvents, getInstanceAvailability } from "@/lib/spektrix";
-import { getLivePacingData } from "@/lib/livePacing";
-import { DATA } from "@/data/pacingData";
+import { currentShowFromEvents, pacificToday } from "@/lib/showStatus";
 
 export const metadata = {
   title: "SLO Rep · By Performance",
@@ -13,7 +12,29 @@ export const metadata = {
 // mount, so stale ISR data is replaced with live data within milliseconds.
 export const revalidate = 300;
 
-const DEFAULT_SHOW = "A Grand Night for Singing";
+async function _getDefaultShowData() {
+  const events = await getEvents();
+
+  // Open on the production being marketed right now — of the shows whose run
+  // has not ended, the one opening soonest — rather than a hardcoded title.
+  const defaultShow = currentShowFromEvents(
+    (events as any[]).map((e) => ({
+      name: e.name,
+      firstInstance: e.firstInstanceDateTime,
+      lastInstance: e.lastInstanceDateTime,
+    })),
+    pacificToday()
+  );
+  if (!defaultShow) return null;
+
+  const event = (events as any[]).find((e) => e.name === defaultShow);
+  if (!event) return null;
+
+  // Availability API — fast (1 call), gives per-instance sold/cap.
+  const instances = await getInstanceAvailability(event.id);
+
+  return { name: event.name, eventId: event.id, instances };
+}
 
 async function getDefaultShowData() {
   try {
@@ -21,37 +42,12 @@ async function getDefaultShowData() {
     return await Promise.race([
       _getDefaultShowData(),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 30000)
+        setTimeout(() => reject(new Error("timeout")), 30000)
       ),
     ]);
   } catch {
     return null;
   }
-}
-
-async function _getDefaultShowData() {
-  const events = await getEvents();
-  const event = events.find(
-    (e: any) => e.name?.toLowerCase() === DEFAULT_SHOW.toLowerCase()
-  );
-  if (!event) return null;
-
-  // Availability API — fast (1 call), gives per-instance sold/cap
-  const instances = await getInstanceAvailability((event as any).id);
-
-  // Accurate total from orders (includes comps + subscriptions)
-  const inProgressShows = (DATA as any[]).filter(
-    (s) => s.name === DEFAULT_SHOW && s.inProgress
-  );
-  const liveMap = await getLivePacingData(inProgressShows).catch(() => ({}));
-  const accurateTotal: number | null = (liveMap as any)[DEFAULT_SHOW]?.c ?? null;
-
-  return {
-    name: (event as any).name,
-    eventId: (event as any).id,
-    instances,
-    accurateTotal,
-  };
 }
 
 export default async function InstancesPage() {
