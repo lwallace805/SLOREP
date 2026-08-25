@@ -10,10 +10,12 @@ export default function TicketMixBar({ showName, inline = false }) {
     if (!showName) return;
     setLoading(true);
     setData(null);
-    fetch(`/api/ticket-mix?name=${encodeURIComponent(showName)}`)
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    fetch(`/api/ticket-mix?name=${encodeURIComponent(showName)}`, { signal: controller.signal })
       .then(r => r.json())
-      .then(d => { if (!d.error) setData(d); })
-      .catch(() => {})
+      .then(d => { clearTimeout(timeout); if (!d.error) setData(d); })
+      .catch(() => { clearTimeout(timeout); })
       .finally(() => setLoading(false));
   }, [showName]);
 

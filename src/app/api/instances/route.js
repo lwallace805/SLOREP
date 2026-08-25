@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getEvents, getInstanceAvailability } from '@/lib/spektrix';
 
-// Never cache — revalidate=300 caused Vercel to cache the full HTTP response
-// at the CDN level, meaning new code never ran until the 5-min TTL expired.
+// Never cache at the CDN level; freshness is managed by the client-side
+// 5-minute refresh interval in PacingDashboard.
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
