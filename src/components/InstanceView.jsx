@@ -48,7 +48,6 @@ export default function InstanceView({ initialData = null }) {
   const [shows, setShows] = useState([]);
   const [selectedName, setSelectedName] = useState('A Grand Night for Singing');
   const [data, setData] = useState(initialData);
-  const [accurateTotal, setAccurateTotal] = useState(initialData?.accurateTotal ?? null);
   const [loadingShows, setLoadingShows] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState(null);
@@ -73,7 +72,6 @@ export default function InstanceView({ initialData = null }) {
     const alreadyHaveData = data?.name?.toLowerCase() === selectedName.toLowerCase();
     if (!alreadyHaveData) { setLoadingData(true); setData(null); }
     setError(null);
-    setAccurateTotal(null);
     fetch(`/api/instances?name=${encodeURIComponent(selectedName)}`)
       .then((r) => r.json())
       .then((d) => { if (d.error) throw new Error(d.error); setData(d); })
@@ -81,18 +79,6 @@ export default function InstanceView({ initialData = null }) {
       .finally(() => setLoadingData(false));
   }, [selectedName]);
 
-  useEffect(() => {
-    if (!selectedName || !shows.length) return;
-    const selectedShow = shows.find(s => s.name === selectedName);
-    if (!selectedShow?.firstInstance) return;
-    const openDate = selectedShow.firstInstance.slice(0, 10);
-    if (openDate > TODAY) return;
-    const params = new URLSearchParams({ name: selectedName, baselineDate: '2026-06-02', baselineCount: '1289', openDate });
-    fetch(`/api/live-pacing?${params}`)
-      .then(r => r.json())
-      .then(d => { if (!d.error && d.c > 0) setAccurateTotal(d.c); })
-      .catch(() => {});
-  }, [selectedName, shows]);
 
   const { past, upcoming } = useMemo(() => {
     const instances = data?.instances || [];
@@ -103,8 +89,7 @@ export default function InstanceView({ initialData = null }) {
   }, [data]);
 
   const instances = data?.instances || [];
-  const availSold      = instances.reduce((s, i) => s + i.sold, 0);
-  const totalSold      = accurateTotal || availSold;
+  const totalSold      = instances.reduce((s, i) => s + i.sold, 0);
   const totalCap       = instances.reduce((s, i) => s + i.cap, 0);
   const overallPct     = totalCap > 0 ? (totalSold / totalCap * 100).toFixed(1) : '0.0';
   const upcomingTotalSold = upcoming.reduce((s, i) => s + i.sold, 0);
