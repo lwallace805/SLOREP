@@ -3,7 +3,7 @@
  * page pre-fetch. Calling this directly avoids an HTTP round-trip.
  */
 import crypto from 'crypto';
-import { getEvents } from './spektrix';
+import { getEvents, getInstanceAvailability } from './spektrix';
 
 // SLO Rep is in Pacific Time.
 export function getPacificDateString() {
@@ -30,27 +30,7 @@ function spektrixSign(method, url) {
   };
 }
 
-async function countOrderTickets(eventId, fromDate, toDate) {
-  const base = `https://system.spektrix.com/${process.env.SPEKTRIX_CLIENT_NAME}/api/v3`;
-  let page = 1;
-  let count = 0;
-  while (true) {
-    const url = `${base}/orders?DateFrom=${fromDate}&DateTo=${toDate}&page=${page}&pageSize=200`;
-    const res = await fetch(url, { headers: spektrixSign('GET', url) });
-    if (!res.ok) break;
-    if (!(res.headers.get('content-type') || '').includes('json')) break;
-    const orders = await res.json();
-    if (!Array.isArray(orders) || orders.length === 0) break;
-    for (const order of orders) {
-      for (const t of order.tickets || []) {
-        if (t.event?.id === eventId) count++;
-      }
-    }
-    if (orders.length < 200) break;
-    page++;
-  }
-  return count;
-}
+// Removed countOrderTickets — replaced by getCurrentSold (availability endpoint, no timeout risk)
 
 // Comp ticket type IDs from Spektrix
 const COMP_TYPE_IDS = new Set([
@@ -184,36 +164,38 @@ export async function getPerInstanceCounts(eventId, saleStartDate) {
 }
 
 /**
- * For each in-progress show in the provided list, fetch the live current count.
- * Returns { [showName]: { d, c } }
+ * Fetch the live current count for each show handed in.
+ * Returns { [showName]: { d, c, cap } }
  *
- * @param {Array<{name, open, series, inProgress}>} shows - the DATA array (or subset)
+ * @param {Array<{name, open, series}>} shows - shows to pull, already filtered
  */
 export async function getLivePacingData(shows) {
-  const inProgress = shows.filter(s => s.inProgress && s.series.length > 0);
-  if (!inProgress.length) return {};
+  // Callers decide which shows are worth pulling — see src/lib/showStatus.js.
+  // This used to filter on show.inProgress, a hand-maintained flag in the data
+  // file that was reliably out of date.
+  const targets = (shows || []).filter(s => s.series?.length > 0);
+  if (!targets.length) return {};
 
   const events = await getEvents();
   const today = getPacificDateString();
   const result = {};
 
-  await Promise.all(inProgress.map(async (show) => {
+  await Promise.all(targets.map(async (show) => {
     try {
       const event = events.find(e => e.name?.toLowerCase() === show.name.toLowerCase());
       if (!event) return;
 
-      const lastPt = show.series[show.series.length - 1];
       const [oy, om, od] = show.open.split('-').map(Number);
       const openUtcMs = Date.UTC(oy, om - 1, od);
 
-      // fromDate = day after last static series point
-      const baselineUtcMs = openUtcMs + lastPt.d * 86400000;
-      const fromDate = new Date(baselineUtcMs + 86400000).toISOString().slice(0, 10);
-
-      const delta = await countOrderTickets(event.id, fromDate, today);
+      // Use availability endpoint — instant, no order iteration, no timeout
+      // Returns real sold + real cap (excludes cancelled performances Spektrix removed)
+      const instances = await getInstanceAvailability(event.id);
+      const totalSold = instances.reduce((s, i) => s + i.sold, 0);
+      const realCap   = instances.reduce((s, i) => s + i.cap,  0);
 
       const d = Math.round((pacificDateToUtcMs(today) - openUtcMs) / 86400000);
-      result[show.name] = { d, c: lastPt.c + delta };
+      result[show.name] = { d, c: totalSold, cap: realCap };
     } catch {
       // show falls back to static data
     }

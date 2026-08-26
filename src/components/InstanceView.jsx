@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { currentShowFromEvents, pacificToday } from '@/lib/showStatus';
 
-const TODAY = new Date().toISOString().slice(0, 10);
-
+const TODAY = pacificToday();
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -31,61 +31,63 @@ function fillColor(pct) {
   return             { bg: '#FEF2F2', bar: '#DC2626', text: '#7F1D1D' };
 }
 
-const selectStyle = {
-  padding: '7px 10px', fontSize: 13,
-  border: '1px solid #D9D2C5', borderRadius: 3,
-  background: '#FFFFFF', fontFamily: "'Inter Tight', sans-serif", color: '#1A1A1A',
-  minWidth: 280,
-};
+function StatCard({ accent, label, value, sub, valueColor }) {
+  return (
+    <div style={{
+      background: '#ffffff', border: '1px solid #e4ddd5', borderRadius: 12,
+      padding: '18px 20px 16px', position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: accent, borderRadius: '12px 12px 0 0' }} />
+      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.11em', textTransform: 'uppercase', color: '#7a7570', marginBottom: 7 }}>{label}</div>
+      <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 30, fontWeight: 700, lineHeight: 1, color: valueColor || '#1c1a18' }}>{value}</div>
+      {sub && <div style={{ fontSize: 11.5, color: '#7a7570', marginTop: 5 }}>{sub}</div>}
+    </div>
+  );
+}
 
 export default function InstanceView({ initialData = null }) {
   const [shows, setShows] = useState([]);
-  const [selectedName, setSelectedName] = useState('A Grand Night for Singing');
+  // The server pre-render already resolved the current production; until the
+  // show list arrives, follow it rather than a hardcoded title.
+  const [selectedName, setSelectedName] = useState(initialData?.name ?? '');
+  // Once the viewer picks a show themselves, stop overriding their choice.
+  const userPicked = useRef(false);
   const [data, setData] = useState(initialData);
   const [loadingShows, setLoadingShows] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState(null);
 
-  // Load show list once on mount
   useEffect(() => {
     setLoadingShows(true);
     fetch('/api/shows')
       .then((r) => r.json())
       .then((shows) => {
-        if (Array.isArray(shows)) {
-          setShows(shows);
-          // Keep default if in list, otherwise pick first
-          const names = shows.map((s) => s.name);
-          if (!names.includes(selectedName) && names.length > 0) {
-            setSelectedName(names[0]);
-          }
+        if (!Array.isArray(shows) || !shows.length) return;
+        setShows(shows);
+        if (userPicked.current) return;
+        const names = shows.map((s) => s.name);
+        // Default to the production being marketed right now: of the shows
+        // whose run has not ended, the one opening soonest.
+        if (!names.includes(selectedName)) {
+          setSelectedName(currentShowFromEvents(shows, TODAY) || names[0]);
         }
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoadingShows(false));
   }, []);
 
-  // Load instance data whenever selected show changes.
-  // Always fetch fresh from the API — never rely solely on ISR-cached initialData,
-  // since cached data may be stale. If we already have data for this show
-  // (e.g. from initialData), keep displaying it while the refresh runs silently.
   useEffect(() => {
     if (!selectedName) return;
     const alreadyHaveData = data?.name?.toLowerCase() === selectedName.toLowerCase();
-    if (!alreadyHaveData) {
-      setLoadingData(true);
-      setData(null);
-    }
+    if (!alreadyHaveData) { setLoadingData(true); setData(null); }
     setError(null);
     fetch(`/api/instances?name=${encodeURIComponent(selectedName)}`)
       .then((r) => r.json())
-      .then((d) => {
-        if (d.error) throw new Error(d.error);
-        setData(d);
-      })
+      .then((d) => { if (d.error) throw new Error(d.error); setData(d); })
       .catch((e) => setError(e.message))
       .finally(() => setLoadingData(false));
   }, [selectedName]);
+
 
   const { past, upcoming } = useMemo(() => {
     const instances = data?.instances || [];
@@ -96,14 +98,12 @@ export default function InstanceView({ initialData = null }) {
   }, [data]);
 
   const instances = data?.instances || [];
-  const totalSold  = instances.reduce((s, i) => s + i.sold, 0);
-  const totalCap   = instances.reduce((s, i) => s + i.cap, 0);
-  const overallPct = totalCap > 0 ? (totalSold / totalCap * 100).toFixed(1) : '0.0';
+  const totalSold      = instances.reduce((s, i) => s + i.sold, 0);
+  const totalCap       = instances.reduce((s, i) => s + i.cap, 0);
+  const overallPct     = totalCap > 0 ? (totalSold / totalCap * 100).toFixed(1) : '0.0';
   const upcomingTotalSold = upcoming.reduce((s, i) => s + i.sold, 0);
   const upcomingTotalCap  = upcoming.reduce((s, i) => s + i.cap, 0);
-  const upcomingPct = upcomingTotalCap > 0
-    ? (upcomingTotalSold / upcomingTotalCap * 100).toFixed(1)
-    : null;
+  const upcomingPct = upcomingTotalCap > 0 ? (upcomingTotalSold / upcomingTotalCap * 100).toFixed(1) : null;
 
   function InstanceRow({ inst, dim }) {
     const { dow, date, year, time } = fmtDt(inst.dt);
@@ -111,21 +111,21 @@ export default function InstanceView({ initialData = null }) {
     const showYear = year !== new Date().getFullYear();
     return (
       <tr style={{ opacity: dim ? 0.55 : 1 }}>
-        <td className="lbl mono" style={{ color: '#6B6052', fontSize: 12 }}>
-          <span style={{ display: 'inline-block', width: 32, color: '#8B7E68' }}>{dow}</span>
-          {date}{showYear && <span style={{ color: '#8B7E68', marginLeft: 4 }}>{year}</span>}
+        <td style={{ color: '#7a7570', fontSize: 12, fontFamily: 'monospace', padding: '9px 12px', borderBottom: '1px solid #f0ebe4' }}>
+          <span style={{ display: 'inline-block', width: 32, color: '#bbb1a0' }}>{dow}</span>
+          {date}{showYear && <span style={{ color: '#bbb1a0', marginLeft: 4 }}>{year}</span>}
         </td>
-        <td className="mono" style={{ color: '#6B6052', fontSize: 12 }}>{time}</td>
-        <td className="mono" style={{ fontWeight: 600 }}>{inst.sold}</td>
-        <td className="mono" style={{ color: '#8B7E68' }}>{inst.cap}</td>
-        <td>
+        <td style={{ color: '#7a7570', fontSize: 12, fontFamily: 'monospace', padding: '9px 12px', borderBottom: '1px solid #f0ebe4' }}>{time}</td>
+        <td style={{ fontWeight: 600, fontFamily: 'monospace', padding: '9px 12px', borderBottom: '1px solid #f0ebe4', color: '#1c1a18' }}>{inst.sold}</td>
+        <td style={{ color: '#bbb1a0', fontFamily: 'monospace', padding: '9px 12px', borderBottom: '1px solid #f0ebe4' }}>{inst.cap}</td>
+        <td style={{ padding: '9px 12px', borderBottom: '1px solid #f0ebe4' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 80, height: 6, background: '#EBE5D5', borderRadius: 3, flexShrink: 0 }}>
-              <div style={{ width: Math.min(inst.pct, 100) + '%', height: '100%', background: colors.bar, borderRadius: 3 }} />
+            <div style={{ width: 80, height: 5, background: '#f0ebe4', borderRadius: 100, flexShrink: 0 }}>
+              <div style={{ width: Math.min(inst.pct, 100) + '%', height: '100%', background: colors.bar, borderRadius: 100 }} />
             </div>
-            <span className="mono" style={{
-              fontSize: 12, fontWeight: 600, color: colors.text,
-              background: colors.bg, padding: '1px 6px', borderRadius: 3,
+            <span style={{
+              fontSize: 12, fontWeight: 600, color: colors.text, fontFamily: 'monospace',
+              background: colors.bg, padding: '2px 7px', borderRadius: 4,
               minWidth: 48, textAlign: 'right', display: 'inline-block',
             }}>
               {inst.pct > 100 ? '>' : ''}{inst.pct.toFixed(0)}%
@@ -140,150 +140,129 @@ export default function InstanceView({ initialData = null }) {
     return (
       <tr>
         <td colSpan={5} style={{
-          padding: '10px 12px 4px', fontSize: 10, letterSpacing: '0.1em',
-          textTransform: 'uppercase', color: '#8B7E68', fontWeight: 600,
-          borderBottom: '1px solid #D9D2C5', background: '#FAF8F4',
+          padding: '7px 12px', fontSize: 10, letterSpacing: '0.12em',
+          textTransform: 'uppercase', color: '#7a7570', fontWeight: 700,
+          borderTop: '1px solid #e4ddd5', borderBottom: '1px solid #e4ddd5',
+          background: '#f7f2eb', display: 'table-cell',
         }}>
-          {label}
-          {pct !== null && (
-            <span className="mono" style={{ float: 'right', fontSize: 11, fontWeight: 400, color: '#6B6052', textTransform: 'none', letterSpacing: 0 }}>
-              {soldTotal} / {capTotal} sold · {pct}%
-            </span>
-          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>{label}</span>
+            {pct !== null && (
+              <span style={{ fontSize: 11, fontWeight: 400, color: '#bbb1a0', textTransform: 'none', letterSpacing: 0, fontFamily: 'monospace' }}>
+                {soldTotal} / {capTotal} sold &middot; {pct}%
+              </span>
+            )}
+          </div>
         </td>
       </tr>
     );
   }
 
+  const overallFillColor = fillColor(parseFloat(overallPct));
+
   return (
-    <div style={{ background: '#FAF8F4', minHeight: '100vh', fontFamily: "'Inter Tight', system-ui, sans-serif", color: '#1A1A1A' }}>
+    <div style={{ background: '#fffdf9', minHeight: '100vh', fontFamily: "'Inter', system-ui, sans-serif", color: '#1c1a18' }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
         body { margin: 0; }
-        .serif { font-family: 'Fraunces', Georgia, serif; }
-        .mono { font-family: 'JetBrains Mono', monospace; }
-        table.inst { border-collapse: collapse; width: 100%; }
-        table.inst th { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #8B7E68; font-weight: 600; padding: 8px 12px; text-align: left; border-bottom: 1px solid #D9D2C5; }
-        table.inst td { padding: 8px 12px; border-bottom: 1px solid #EBE5D5; font-size: 13px; }
-        table.inst td.lbl { text-align: left; }
-        table.inst tr:last-child td { border-bottom: none; }
-        table.inst tr:hover td { background: #FBF8F0; }
-        table.inst tr:has(td[colspan]):hover td { background: #FAF8F4; }
+        .iv-outer { max-width: 960px; margin: 0 auto; padding: 32px 40px; }
+        .iv-stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 20px; }
+        @media (max-width: 700px) {
+          .iv-outer { padding: 20px 16px !important; }
+          .iv-stat-grid { grid-template-columns: 1fr 1fr !important; }
+        }
       `}</style>
 
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '32px 40px' }}>
+      <div className="iv-outer">
 
         {/* Header */}
-        <div style={{ borderBottom: '1px solid #D9D2C5', paddingBottom: 20, marginBottom: 22 }}>
-          <div style={{ fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#8B7E68' }}>
-            SLO Rep · Marketing Analytics
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#7a7570', marginBottom: 5 }}>
+            SLO Rep &middot; Marketing Analytics
           </div>
-          <h1 className="serif" style={{ fontSize: 36, fontWeight: 600, lineHeight: 1.1, margin: '8px 0 4px' }}>
+          <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 28, fontWeight: 700, color: '#1c1a18', lineHeight: 1.2, margin: '0 0 4px' }}>
             By Performance
           </h1>
-          <div style={{ fontSize: 14, color: '#6B6052', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ fontSize: 12.5, color: '#7a7570', display: 'flex', alignItems: 'center', gap: 8 }}>
             Tickets sold per instance vs capacity
             <span style={{
-              fontSize: 10, letterSpacing: '0.08em', textTransform: 'uppercase',
-              background: '#ECFDF5', color: '#065F46', padding: '2px 7px', borderRadius: 10,
-              fontWeight: 600, border: '1px solid #A7F3D0',
+              fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: '#22c55e', background: 'rgba(34,197,94,.12)', border: '1px solid rgba(34,197,94,.25)',
+              borderRadius: 100, padding: '2px 8px', display: 'inline-flex', alignItems: 'center', gap: 4,
             }}>
-              ● LIVE
+              <span style={{ width: 5, height: 5, background: '#22c55e', borderRadius: '50%', display: 'inline-block' }} />
+              Live
             </span>
           </div>
         </div>
 
+        <div style={{ height: 1, background: '#e4ddd5', marginBottom: 20 }} />
+
         {/* Show selector */}
-        <div style={{ marginBottom: 22, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <label style={{ fontSize: 12, color: '#6B6052', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Show</label>
+        <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7a7570', whiteSpace: 'nowrap' }}>Show</span>
           <select
             value={selectedName}
-            onChange={(e) => setSelectedName(e.target.value)}
-            style={selectStyle}
+            onChange={(e) => { userPicked.current = true; setSelectedName(e.target.value); }}
+            style={{
+              fontFamily: "'Inter', sans-serif", fontSize: 13.5, fontWeight: 500, color: '#1c1a18',
+              background: '#ffffff', border: '1.5px solid #e4ddd5', borderRadius: 6,
+              padding: '7px 30px 7px 11px', appearance: 'none', cursor: 'pointer', minWidth: 270,
+            }}
             disabled={loadingShows}
           >
             {loadingShows ? (
-              <option>Loading shows…</option>
+              <option>Loading shows&hellip;</option>
             ) : (
               shows.map((s) => (
                 <option key={s.id} value={s.name}>{s.name}</option>
               ))
             )}
           </select>
-          {loadingData && (
-            <span style={{ fontSize: 12, color: '#8B7E68' }}>Loading…</span>
-          )}
+          {loadingData && <span style={{ fontSize: 12, color: '#7a7570' }}>Loading&hellip;</span>}
         </div>
 
         {error && (
-          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 6, padding: '12px 16px', marginBottom: 22, fontSize: 13, color: '#991B1B' }}>
+          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#991B1B' }}>
             {error}
           </div>
         )}
 
-        {/* Run summary stats */}
+        {/* Stat cards */}
         {data && (
-          <div style={{
-            background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 6,
-            padding: '20px 28px', marginBottom: 22,
-            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24,
-          }}>
-            <div>
-              <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B7E68', marginBottom: 8, fontWeight: 600 }}>Run total sold</div>
-              <div className="serif" style={{ fontSize: 28, fontWeight: 600 }}>{totalSold.toLocaleString()}</div>
-              <div style={{ fontSize: 11, color: '#8B7E68', marginTop: 4 }}>of {totalCap.toLocaleString()} capacity</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B7E68', marginBottom: 8, fontWeight: 600 }}>Overall fill</div>
-              <div className="serif" style={{ fontSize: 28, fontWeight: 600, color: fillColor(parseFloat(overallPct)).text }}>{overallPct}%</div>
-              <div style={{ fontSize: 11, color: '#8B7E68', marginTop: 4 }}>all {instances.length} performances</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B7E68', marginBottom: 8, fontWeight: 600 }}>Upcoming</div>
-              <div className="serif" style={{ fontSize: 28, fontWeight: 600 }}>{upcoming.length}</div>
-              <div style={{ fontSize: 11, color: '#8B7E68', marginTop: 4 }}>
-                {upcoming.length > 0 ? `${upcomingTotalSold} sold / ${upcomingTotalCap} cap` : 'run complete'}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#8B7E68', marginBottom: 8, fontWeight: 600 }}>Upcoming fill</div>
-              {upcomingPct !== null ? (
-                <>
-                  <div className="serif" style={{ fontSize: 28, fontWeight: 600, color: fillColor(parseFloat(upcomingPct)).text }}>{upcomingPct}%</div>
-                  <div style={{ fontSize: 11, color: '#8B7E68', marginTop: 4 }}>avg across remaining shows</div>
-                </>
-              ) : (
-                <>
-                  <div className="serif" style={{ fontSize: 28, fontWeight: 600, color: '#BBB1A0' }}>—</div>
-                  <div style={{ fontSize: 11, color: '#8B7E68', marginTop: 4 }}>no upcoming performances</div>
-                </>
-              )}
-            </div>
+          <div className="iv-stat-grid">
+            <StatCard accent="#0f766e" label="Run Total Sold" value={totalSold.toLocaleString()} sub={`of ${totalCap.toLocaleString()} capacity`} />
+            <StatCard accent="#b02629" label="Overall Fill" value={overallPct + '%'} sub="all performances" valueColor={overallFillColor.text} />
+            <StatCard accent="#d97706" label="Upcoming" value={upcoming.length.toString()} sub={`${upcomingTotalSold} / ${upcomingTotalCap} sold`} />
+            <StatCard
+              accent="#475569"
+              label="Upcoming Fill"
+              value={upcomingPct !== null ? upcomingPct + '%' : '—'}
+              sub={upcomingPct !== null ? 'avg across remaining' : 'no upcoming performances'}
+              valueColor={upcomingPct !== null ? fillColor(parseFloat(upcomingPct)).text : '#bbb1a0'}
+            />
           </div>
         )}
 
         {/* Instance table */}
         {data && (
-          <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 6, overflow: 'hidden', marginBottom: 22 }}>
-            <table className="inst">
+          <div style={{ background: '#ffffff', border: '1px solid #e4ddd5', borderRadius: 12, overflow: 'hidden', marginBottom: 20 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Time</th>
-                  <th style={{ textAlign: 'right' }}>Sold</th>
-                  <th style={{ textAlign: 'right' }}>Cap</th>
-                  <th>Fill</th>
+                  {['Date', 'Time', 'Sold', 'Cap', 'Fill'].map((h, i) => (
+                    <th key={h} style={{
+                      fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase',
+                      color: '#7a7570', padding: '10px 12px', borderBottom: '1px solid #e4ddd5',
+                      textAlign: i >= 2 && i <= 3 ? 'right' : 'left', whiteSpace: 'nowrap',
+                    }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {upcoming.length > 0 && (
                   <>
-                    <SectionHeader
-                      label="Upcoming performances"
-                      soldTotal={upcomingTotalSold}
-                      capTotal={upcomingTotalCap}
-                      pct={upcomingPct}
-                    />
+                    <SectionHeader label="Upcoming performances" soldTotal={upcomingTotalSold} capTotal={upcomingTotalCap} pct={upcomingPct} />
                     {upcoming.map((inst) => <InstanceRow key={inst.dt} inst={inst} dim={false} />)}
                   </>
                 )}
@@ -293,43 +272,45 @@ export default function InstanceView({ initialData = null }) {
                       label="Past performances"
                       soldTotal={past.reduce((s, i) => s + i.sold, 0)}
                       capTotal={past.reduce((s, i) => s + i.cap, 0)}
-                      pct={
-                        past.reduce((s, i) => s + i.cap, 0) > 0
-                          ? (past.reduce((s, i) => s + i.sold, 0) / past.reduce((s, i) => s + i.cap, 0) * 100).toFixed(1)
-                          : null
-                      }
+                      pct={past.reduce((s, i) => s + i.cap, 0) > 0
+                        ? (past.reduce((s, i) => s + i.sold, 0) / past.reduce((s, i) => s + i.cap, 0) * 100).toFixed(1)
+                        : null}
                     />
                     {[...past].reverse().map((inst) => <InstanceRow key={inst.dt} inst={inst} dim={true} />)}
                   </>
                 )}
                 {!loadingData && instances.length === 0 && (
-                  <tr><td colSpan={5} style={{ padding: '16px 12px', color: '#8B7E68', fontSize: 13 }}>No performance data found.</td></tr>
+                  <tr><td colSpan={5} style={{ padding: '16px 12px', color: '#7a7570', fontSize: 13 }}>No performance data found.</td></tr>
                 )}
               </tbody>
             </table>
+
+            {/* Color key */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, padding: '10px 14px 12px', borderTop: '1px solid #f0ebe4', background: '#f7f2eb' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#7a7570', alignSelf: 'center' }}>Fill:</span>
+              {[
+                { label: '>100%', pct: 105 },
+                { label: '90–100%', pct: 95 },
+                { label: '75–89%', pct: 80 },
+                { label: '60–74%', pct: 67 },
+                { label: '40–59%', pct: 50 },
+                { label: '<40%', pct: 20 },
+              ].map(({ label, pct }) => {
+                const c = fillColor(pct);
+                return (
+                  <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 2, background: c.bar, display: 'inline-block' }} />
+                    {label}
+                  </span>
+                );
+              })}
+            </div>
           </div>
         )}
 
         {!data && !loadingData && !loadingShows && !error && (
-          <div style={{ padding: 40, textAlign: 'center', color: '#8B7E68' }}>Select a show above to view performance data.</div>
+          <div style={{ padding: 40, textAlign: 'center', color: '#7a7570' }}>Select a show above to view performance data.</div>
         )}
-
-        {/* Legend */}
-        <div style={{ display: 'flex', gap: 16, fontSize: 11, color: '#6B6052', flexWrap: 'wrap' }}>
-          {[
-            { label: '>100% sold', ...fillColor(105) },
-            { label: '90–100%',   ...fillColor(95) },
-            { label: '75–89%',    ...fillColor(80) },
-            { label: '60–74%',    ...fillColor(67) },
-            { label: '40–59%',    ...fillColor(50) },
-            { label: '<40%',      ...fillColor(20) },
-          ].map(({ label, bar }) => (
-            <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: bar }} />
-              {label}
-            </span>
-          ))}
-        </div>
 
       </div>
     </div>
