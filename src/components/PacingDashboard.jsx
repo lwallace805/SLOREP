@@ -19,14 +19,44 @@ const CATEGORIES = {
   ubu:          { label: "Ubu's Other Shoe",       color: "#7C3AED" },
 };
 
-const PROJ_CALIBRATION = {
-  revue:        { bias: 0.079, mape: 0.086 },
-  drama:        { bias: 0.076, mape: 0.446 },
-  comedy:       { bias: 0.086, mape: 0.189 },
-  book_musical: { bias: 0.160, mape: 0.371 },
-  holiday:      { bias: 0.381, mape: 0.524 },
-  ubu:          { bias: 0.050, mape: 0.200 },
-};
+/**
+ * Pace-extrapolation calibration, fitted by leave-one-out backtest over the 46
+ * completed shows in pacingData. Regenerate with:
+ *   node scripts/fit-pace-calibration.mjs
+ *
+ * The raw estimate divides tickets sold so far by the median fraction-of-final
+ * peers had reached on the same day from opening, so it already asks "how far
+ * ahead or behind peer pace are we, and where does that land?". It needs two
+ * corrections on top.
+ *
+ * 1. Centering. The raw estimate runs hot: pooled over the d>=-30 window where
+ *    it is shown at all, the median ratio of actual final to raw estimate is
+ *    0.85. It varies by category, so each gets its own factor, shrunk toward
+ *    the pooled value by the number of distinct shows behind it so that a
+ *    five-show category cannot swing on one outlier.
+ *
+ * 2. A band that tightens as opening approaches. The previous model applied one
+ *    flat per-category MAPE at every point in the run, which is far too wide the
+ *    day before opening and far too narrow a month out. Measured, the 80%
+ *    interval runs 40%-234% of the point estimate at d-30 and 75%-142% at d-1.
+ */
+const PACE_CENTER = { comedy: 0.905, drama: 0.953, revue: 0.910, ubu: 0.787 };
+// book_musical and holiday have too few completed shows to fit their own.
+const PACE_CENTER_DEFAULT = 0.852;
+
+// [maxD, q10, q90] - first row whose maxD covers d wins. 80% interval,
+// as a multiple of the centered point estimate.
+const PACE_BANDS = [
+  [-16, 0.401, 2.342],
+  [-8,  0.515, 1.825],
+  [-4,  0.579, 1.729],
+  [-2,  0.653, 1.648],
+  [0,   0.753, 1.417],
+];
+function paceBand(d) {
+  for (const [maxD, lo, hi] of PACE_BANDS) if (d <= maxD) return [lo, hi];
+  return [0.753, 1.417];
+}
 
 const RECENT_SEASONS = new Set(["24-25", "25-26"]);
 const MILESTONE_BASE = [-180, -90, -60, -30, -15, -7, -3, -1, 0, 7, 14, 21];
@@ -301,14 +331,24 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
       ? currentCapPctNow - peerMedCapPct : null;
     const rawProjection = (peerMedPct && peerMedPct > 0 && d >= -30 && peerVals.length >= 3)
       ? Math.round(cPt.c / (peerMedPct / 100)) : null;
-    const cal = PROJ_CALIBRATION[current.cat] || { bias: 0.10, mape: 0.25 };
+    const centre = PACE_CENTER[current.cat] ?? PACE_CENTER_DEFAULT;
+    const [bandLo, bandHi] = paceBand(d);
     const cap = current.cap || Infinity;
-    const projection = rawProjection ? Math.min(cap, Math.round(rawProjection / (1 + cal.bias))) : null;
-    const rawLow = rawProjection ? Math.round(rawProjection / (1 + cal.bias) * (1 - cal.mape)) : null;
+    const calibrated = rawProjection ? rawProjection * centre : null;
+    const projection = calibrated != null ? Math.min(cap, Math.round(calibrated)) : null;
+    const rawLow = calibrated != null ? Math.round(calibrated * bandLo) : null;
+    // A run cannot finish below what is already banked, so the low end stays
+    // floored at tickets sold. That clamp is a backstop, not a forecast: when it
+    // binds, the card says so rather than passing it off as the model's floor.
     const projectionLow  = rawLow != null ? Math.min(cap, Math.max(rawLow, cPt.c)) : null;
-    const projectionHigh = rawProjection ? Math.min(cap, Math.round(rawProjection / (1 + cal.bias) * (1 + cal.mape))) : null;
+    const projectionHigh = calibrated != null ? Math.min(cap, Math.round(calibrated * bandHi)) : null;
+    const lowIsClamped = rawLow != null && rawLow < cPt.c;
+    // Where this show sits against peer pace right now, as a ratio of percent of
+    // capacity sold at the same day. 1.00 is exactly on peer pace.
+    const paceIndex = (currentCapPctNow !== null && peerMedCapPct) ? currentCapPctNow / peerMedCapPct : null;
     const peerMedFinal = median(closedPeers.map(p => p.final));
-    return { d, currentTix: cPt.c, peerMed, delta, projection, projectionLow, projectionHigh, peerMedFinal, peerN: peerVals.length };
+    return { d, currentTix: cPt.c, peerMed, delta, projection, projectionLow, projectionHigh, peerMedFinal,
+             peerN: peerVals.length, centre, bandLo, bandHi, paceIndex, lowIsClamped };
   }, [currentToday, peers, closedPeers, current]);
 
   const chartData = useMemo(() => {
@@ -737,7 +777,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
             <strong>Peer median</strong>: across selected peer shows, the median cumulative tickets at the same day from opening. <strong>Peer % of final (median)</strong> shows what fraction of their final total peers had sold by that day; useful as a pacing benchmark.
           </div>
           <div style={{ marginBottom: 6 }}>
-            <strong>Projected final (calibrated)</strong>: raw projection adjusted for systematic over-prediction bias measured in a backtest of completed shows. The range reflects ±1 mean-absolute-error for the category. Only shown inside d=−30 where the denominator is stable. Revue shows have the tightest historical error (~8.6% MAPE).
+            <strong>Projected final (calibrated)</strong>: tickets sold so far divided by the median fraction-of-final peers had reached on this day — an extrapolation of how far ahead or behind peer pace the show is running — then scaled by a per-category centering factor, since the raw estimate runs about 15% hot. The range is an 80% confidence interval fitted by leave-one-out backtest over the 46 completed shows, and it narrows as opening approaches: roughly 40–234% of the point estimate at d−30, against 75–142% at d−1. Only shown inside d=−30 where the denominator is stable.
           </div>
           <div>
             <strong>Capacity caveat</strong>: a few recent shows show &gt;100% sell-through against capacity, likely due to seat-hold release patterns not yet reconciled with Spektrix. Use % of capacity as a directional metric.
@@ -760,14 +800,14 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
 
           {/* Projection Detail */}
           {headline?.projection && projRangeBar && (() => {
-            const cal = PROJ_CALIBRATION[current.cat] || { bias: 0.10, mape: 0.25 };
             return (
               <div style={{ background: "#ffffff", border: "1px solid #e4ddd5", borderRadius: 12, padding: "16px 18px" }}>
                 <div style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7a7570", fontWeight: 600, marginBottom: 4 }}>Projection Detail</div>
                 <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 15, fontWeight: 600, color: "#1c1a18", marginBottom: 12 }}>Calibrated forecast</div>
                 <div style={{ background: "#f7f2eb", borderRadius: 8, padding: "14px 16px", marginBottom: 12, textAlign: "center" }}>
                   <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 28, fontWeight: 700, color: "#1c1a18" }}>~{headline.projection.toLocaleString()}</div>
-                  <div style={{ fontSize: 11, color: "#7a7570", marginTop: 3 }}>of {current.cap?.toLocaleString()} capacity</div>
+                  <div style={{ fontSize: 11.5, color: "#0f766e", fontWeight: 600, marginTop: 4 }}>~{projRangeBar.midPct.toFixed(0)}% projected sell-through</div>
+                  <div style={{ fontSize: 10.5, color: "#7a7570", marginTop: 1 }}>of {current.cap?.toLocaleString()} capacity</div>
                   <div style={{ position: "relative", height: 6, background: "#e4ddd5", borderRadius: 100, margin: "10px 0 4px", overflow: "visible" }}>
                     <div style={{ position: "absolute", top: 0, left: projRangeBar.fillLeft + "%", width: projRangeBar.fillWidth + "%", height: "100%", background: "linear-gradient(90deg,#6ee7b7,#a7f3d0)", borderRadius: 100 }} />
                     <div style={{ position: "absolute", top: -4, left: projRangeBar.markerLeft + "%", width: 14, height: 14, background: "#0f766e", border: "2.5px solid #fff", borderRadius: "50%", transform: "translateX(-50%)", boxShadow: "0 1px 4px rgba(0,0,0,.12)" }} />
@@ -777,11 +817,19 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                     <span style={{ fontWeight: 600, color: "#0f766e" }}>{projRangeBar.midPct.toFixed(0)}%</span>
                     <span>{projRangeBar.ceilPct.toFixed(0)}% ceiling</span>
                   </div>
+                  {headline.lowIsClamped && (
+                    <div style={{ fontSize: 10, color: "#a1998f", marginTop: 6, fontStyle: "italic" }}>
+                      floor is tickets already sold, not the model&rsquo;s low end
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 7, fontSize: 12 }}>
                   {[
-                    ["Category bias", `+${(cal.bias * 100).toFixed(1)}%`],
-                    ["MAPE (error band)", `\u00b1${(cal.mape * 100).toFixed(1)}%`],
+                    ["Sell-through (80% CI)", `${projRangeBar.floorPct.toFixed(0)}\u2013${projRangeBar.ceilPct.toFixed(0)}%`],
+                    ["Pace vs peers", headline.paceIndex
+                      ? `${headline.paceIndex.toFixed(2)}\u00d7 ${headline.paceIndex >= 1 ? "ahead" : "behind"}`
+                      : "\u2014"],
+                    ["Category centering", `\u00d7${headline.centre.toFixed(2)}`],
                     ["Peers used", headline.peerN],
                     ["Current d", headline.d >= 0 ? `+${headline.d}` : headline.d],
                   ].map(([lbl, val]) => (
