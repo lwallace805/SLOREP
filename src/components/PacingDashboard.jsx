@@ -767,7 +767,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                 <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 15, fontWeight: 600, color: "#1c1a18", marginBottom: 12 }}>Calibrated forecast</div>
                 <div style={{ background: "#f7f2eb", borderRadius: 8, padding: "14px 16px", marginBottom: 12, textAlign: "center" }}>
                   <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 28, fontWeight: 700, color: "#1c1a18" }}>~{headline.projection.toLocaleString()}</div>
-                  <div style={{ fontSize: 11, color: "#7a7570", marginTop: 3 }}>of {current.cap?.toLocaleString()} capacity</div>
+                  <div style={{ fontSize: 11, color: "#7a7570", marginTop: 3 }}><span style={{ fontWeight: 600, color: "#0f766e" }}>~{projRangeBar.midPct.toFixed(0)}%</span> of {current.cap?.toLocaleString()} capacity</div>
                   <div style={{ position: "relative", height: 6, background: "#e4ddd5", borderRadius: 100, margin: "10px 0 4px", overflow: "visible" }}>
                     <div style={{ position: "absolute", top: 0, left: projRangeBar.fillLeft + "%", width: projRangeBar.fillWidth + "%", height: "100%", background: "linear-gradient(90deg,#6ee7b7,#a7f3d0)", borderRadius: 100 }} />
                     <div style={{ position: "absolute", top: -4, left: projRangeBar.markerLeft + "%", width: 14, height: 14, background: "#0f766e", border: "2.5px solid #fff", borderRadius: "50%", transform: "translateX(-50%)", boxShadow: "0 1px 4px rgba(0,0,0,.12)" }} />
@@ -780,6 +780,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 7, fontSize: 12 }}>
                   {[
+                    ["Projected fill", `${projRangeBar.floorPct.toFixed(0)}\u2013${projRangeBar.ceilPct.toFixed(0)}%`],
                     ["Category bias", `+${(cal.bias * 100).toFixed(1)}%`],
                     ["MAPE (error band)", `\u00b1${(cal.mape * 100).toFixed(1)}%`],
                     ["Peers used", headline.peerN],
