@@ -1,6 +1,6 @@
 import PacingDashboard from "@/components/PacingDashboard";
 import { getLivePacingData } from "@/lib/livePacing";
-import { getRunWindows, isOnSale, pacificToday } from "@/lib/showStatus";
+import { getRunWindows, isOnSale, pacificToday, currentShowName } from "@/lib/showStatus";
 import { DATA } from "@/data/pacingData";
 
 // Rebuild with fresh live data every 5 minutes.
@@ -15,7 +15,24 @@ async function loadServerData() {
   const onSale = DATA.filter(
     (s: any) => isOnSale(s, runWindows, today) && s.series.length > 0
   );
-  const initialLiveData = await getLivePacingData(onSale);
+
+  // The season rail lists every show in the current season, but the data file is
+  // frozen at the last export, so a show that has already closed this season
+  // still carries its export-day figure — Finding Nemo reads 64 tickets, 5% of
+  // capacity, because that is where its series stops. Those shows are not on
+  // sale, so the filter above skips them and nothing ever corrects the number.
+  // They have opened, so Spektrix knows the truth: pull it for them too.
+  const currentName = currentShowName(DATA, runWindows, today);
+  const currentSeason = DATA.find((s: any) => s.name === currentName)?.season;
+  const openedThisSeason = DATA.filter(
+    (s: any) =>
+      s.season === currentSeason &&
+      s.open <= today &&
+      s.series.length > 0 &&
+      !onSale.some((o: any) => o.name === s.name)
+  );
+
+  const initialLiveData = await getLivePacingData([...onSale, ...openedThisSeason]);
   return { runWindows, initialLiveData };
 }
 
