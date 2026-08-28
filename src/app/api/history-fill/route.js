@@ -133,6 +133,7 @@ export async function GET(request) {
       ticketsSeen: scan.ticketsSeen,
       matchedTickets: scan.matchedTickets,
       lastError: scan.lastError,
+      ...(searchParams.get('debug') ? { shape: scan.shape } : {}),
     });
   } catch (err) {
     console.error('history-fill error:', err.message);
