@@ -172,19 +172,39 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
       baselineCount: String(lastPt.c),
       openDate: show.open,
     });
+    // Record what happened either way. An earlier version returned early on an
+    // error response, so a failing route produced no diagnostic at all — the
+    // banner appeared with nothing to explain it, which is the one case worth
+    // explaining. Every outcome now lands in gapPartial.
+    const note = (meta) => {
+      if (!cancelled) setGapPartial(prev => ({ ...prev, [show.name]: meta }));
+    };
     fetch(`/api/history-fill?${params}`)
-      .then(r => r.json())
-      .then(data => {
-        if (cancelled || data.error || !data.series?.length) return;
+      .then(async (r) => {
+        let data = null;
+        try { data = await r.json(); } catch { /* not JSON */ }
+        if (cancelled) return;
+        if (!r.ok || !data || data.error) {
+          note({
+            complete: false, found: 0, ordersSeen: data?.ordersSeen ?? null,
+            lastError: data?.error ? `${r.status}: ${data.error}` : `http ${r.status}`,
+          });
+          return;
+        }
+        if (!data.series?.length) {
+          note({ complete: false, found: 0, ordersSeen: data.ordersSeen ?? null, lastError: 'empty series' });
+          return;
+        }
         setGapSeries(prev => ({ ...prev, [show.name]: data.series }));
-        setGapPartial(prev => ({ ...prev, [show.name]: {
-            complete: data.complete !== false,
-            found: data.found ?? 0,
-            lastError: data.lastError || null,
-            ordersSeen: data.ordersSeen ?? null,
-          } }));
+        note({
+          complete: data.complete !== false,
+          found: data.found ?? 0,
+          lastError: data.lastError || null,
+          ordersSeen: data.ordersSeen ?? null,
+          matchedTickets: data.matchedTickets ?? null,
+        });
       })
-      .catch(() => {});
+      .catch((err) => note({ complete: false, found: 0, ordersSeen: null, lastError: `request failed: ${err?.message || 'unknown'}` }));
     return () => { cancelled = true; };
   }, [currentName, selectedIsLive, today]);
 
@@ -603,12 +623,18 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
               {gapUnmeasured && (
                 <div style={{ marginTop: 6, fontSize: 11, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 6, padding: "5px 9px", display: "inline-block" }}>
                   Day-by-day history unavailable between the last export and today — the curve jumps rather than climbing. Totals are correct; the shape in between is not.
-                  {gapPartial[current.name]?.lastError && (
-                    <div style={{ marginTop: 3, fontSize: 10, color: "#a16207", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
-                      {gapPartial[current.name].ordersSeen != null && `orders seen: ${gapPartial[current.name].ordersSeen} · `}
-                      {gapPartial[current.name].lastError}
-                    </div>
-                  )}
+                  <div style={{ marginTop: 3, fontSize: 10, color: "#a16207", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                    {(() => {
+                      const m = gapPartial[current.name];
+                      if (!m) return "history-fill: no response yet";
+                      const bits = [];
+                      if (m.ordersSeen != null) bits.push(`orders ${m.ordersSeen}`);
+                      if (m.matchedTickets != null) bits.push(`matched ${m.matchedTickets}`);
+                      bits.push(`found ${m.found ?? 0}`);
+                      if (m.lastError) bits.push(m.lastError);
+                      return bits.join(" · ");
+                    })()}
+                  </div>
                 </div>
               )}
             </div>
@@ -639,11 +665,27 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                 {MILESTONE_BASE.map(d => (
                   <ReferenceLine key={d} x={d} stroke="#e4ddd5" strokeDasharray="2 4" />
                 ))}
-                <ReferenceLine x={0} stroke="#1c1a18" strokeWidth={1.2} label={{ value: "Opening", position: "top", fontSize: 10, fill: "#1c1a18" }} />
-                {onSale(current) && (trueTodayD ?? todayD) !== null && (
-                  <ReferenceLine x={trueTodayD ?? todayD} stroke="#0f766e" strokeWidth={1.2} strokeDasharray="4 2"
-                    label={{ value: "Today", position: "top", fontSize: 10, fill: "#0f766e" }} />
-                )}
+                {(() => {
+                  // On opening night the Today line lands exactly on Opening and
+                  // the two labels print on top of each other. Draw one marker
+                  // reading "Opening · today" instead of two overlapping ones.
+                  const todayLine = onSale(current) ? (trueTodayD ?? todayD) : null;
+                  const sameDay = todayLine === 0;
+                  return (
+                    <>
+                      <ReferenceLine
+                        x={0}
+                        stroke="#1c1a18"
+                        strokeWidth={1.2}
+                        label={{ value: sameDay ? "Opening · today" : "Opening", position: "top", fontSize: 10, fill: "#1c1a18" }}
+                      />
+                      {todayLine !== null && !sameDay && (
+                        <ReferenceLine x={todayLine} stroke="#0f766e" strokeWidth={1.2} strokeDasharray="4 2"
+                          label={{ value: "Today", position: "top", fontSize: 10, fill: "#0f766e" }} />
+                      )}
+                    </>
+                  );
+                })()}
                 <Area type="monotone" dataKey="peerP25" stackId="band" stroke="none" fill="transparent" />
                 <Area type="monotone" dataKey="peerBand" stackId="band" stroke="none" fill={catColor} fillOpacity={0.15} />
                 <Line type="monotone" dataKey="peerMed" stroke={catColor} strokeWidth={2.2} dot={false} connectNulls />
