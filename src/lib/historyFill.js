@@ -43,14 +43,39 @@ export function dateWindows(from, to, days = WINDOW_DAYS) {
   return out;
 }
 
-/** Tickets on this order belonging to eventId. Spektrix nests the event id
+// Comp ticket types, mirroring src/app/api/ticket-mix/route.js. A ticket is a
+// comp by type or by carrying no original price.
+export const COMP_TYPE_IDS = new Set([
+  '601APNNMRMBJQQPBSCNQMHHCNMQSBHBBJ', // Artist Comp
+  '801ARDQDDMGGJKKRTNTJBMCCMMBCPQKCR', // Sponsor Comps
+  '1001ADGKSHLJDTDBJQTBMGLLJRLBJCMNN', // Volunteer Comp
+  '1002AHCBPDSTCNNKTDJHKPNMKHJVQKHSQ', // General Comp
+]);
+
+/**
+ * Whether a ticket counts towards the paid figure the dashboard reports.
+ *
+ * The page states the rule itself: net paid tickets only, comps excluded,
+ * subscription bundles with $0 line items excluded. Counting every ticket with
+ * a matching event id instead produced 1,159 against a live availability total
+ * of 889 — a curve that climbed past the real figure and then dropped back to
+ * it on the final point.
+ */
+export function isPaidTicket(t) {
+  const typeId = t?.type?.id || t?.ticketType?.id || '';
+  if (COMP_TYPE_IDS.has(typeId)) return false;
+  if (t?.originalPrice === 0) return false;
+  return true;
+}
+
+/** Paid tickets on this order belonging to eventId. Spektrix nests the event id
  *  under each ticket; some payloads carry it as a bare string rather than an
  *  object, so accept both rather than silently counting zero. */
 export function countTicketsForEvent(order, eventId) {
   let n = 0;
   for (const t of order?.tickets || []) {
     const id = typeof t?.event === 'string' ? t.event : t?.event?.id;
-    if (id && id === eventId) n++;
+    if (id && id === eventId && isPaidTicket(t)) n++;
   }
   return n;
 }

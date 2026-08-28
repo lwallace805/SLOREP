@@ -9,7 +9,7 @@
  */
 import {
   dateWindows, scanOrders, buildSeries, scanWindow,
-  countTicketsForEvent, orderDateOf, addDays, daysBetween,
+  countTicketsForEvent, orderDateOf, addDays, daysBetween, isPaidTicket, COMP_TYPE_IDS,
 } from '../src/lib/historyFill.js';
 
 let pass = 0, fail = 0;
@@ -50,7 +50,7 @@ function mockApi(orders, opts = {}) {
 }
 const order = (date, n, evt = EVENT) => ({
   firstTransactionDate: `${date}T12:00:00`,
-  tickets: Array.from({ length: n }, () => ({ event: { id: evt } })),
+  tickets: Array.from({ length: n }, () => ({ event: { id: evt }, originalPrice: 45 })),
 });
 
 section('dateWindows');
@@ -70,8 +70,8 @@ eq(dateWindows('2025-12-28', '2026-01-05').map(r => `${r.from}..${r.to}`),
 eq(dateWindows('2026-08-28', '2026-06-02'), [], 'inverted range yields nothing');
 
 section('ticket → event matching');
-eq(countTicketsForEvent({ tickets: [{ event: { id: 'EVT1' } }, { event: { id: 'OTHER' } }] }, 'EVT1'), 1, 'nested object id');
-eq(countTicketsForEvent({ tickets: [{ event: 'EVT1' }, { event: 'EVT1' }] }, 'EVT1'), 2, 'bare string id');
+eq(countTicketsForEvent({ tickets: [{ event: { id: 'EVT1' }, originalPrice: 45 }, { event: { id: 'OTHER' }, originalPrice: 45 }] }, 'EVT1'), 1, 'nested object id');
+eq(countTicketsForEvent({ tickets: [{ event: 'EVT1', originalPrice: 45 }, { event: 'EVT1', originalPrice: 45 }] }, 'EVT1'), 2, 'bare string id');
 eq(countTicketsForEvent({ tickets: [{}, { event: null }] }, 'EVT1'), 0, 'missing event does not match');
 eq(countTicketsForEvent({}, 'EVT1'), 0, 'order with no tickets');
 eq(orderDateOf({ firstTransactionDate: '2026-07-04T09:00:00' }), '2026-07-04', "reads Spektrix's firstTransactionDate");
@@ -82,9 +82,26 @@ eq(orderDateOf({ purchasedAt: '2026-07-04T09:00:00Z' }), '2026-07-04', 'still ac
 eq(orderDateOf({}), '', 'no date field');
 {
   // The exact regression: a real Spektrix order carrying the right event id.
-  const real = { firstTransactionDate: '2026-08-26T14:03:00', tickets: [{ event: { id: 'EVT1' } }, { event: { id: 'OTHER' } }] };
+  const real = { firstTransactionDate: '2026-08-26T14:03:00', tickets: [{ event: { id: 'EVT1' }, originalPrice: 45 }, { event: { id: 'OTHER' }, originalPrice: 45 }] };
   eq(orderDateOf(real) !== '', true, 'a real order shape yields a usable date');
   eq(countTicketsForEvent(real, 'EVT1'), 1, 'and its tickets match');
+}
+
+section('paid-ticket rule');
+{
+  const comp = [...COMP_TYPE_IDS][0];
+  eq(isPaidTicket({ originalPrice: 42 }), true, 'a priced ticket is paid');
+  eq(isPaidTicket({ originalPrice: 0 }), false, 'a zero original price is not paid');
+  eq(isPaidTicket({ type: { id: comp }, originalPrice: 42 }), false, 'a comp type is not paid, whatever its price');
+  eq(isPaidTicket({ ticketType: { id: comp }, originalPrice: 42 }), false, 'comp under ticketType is also caught');
+  eq(isPaidTicket({}), true, 'an unpriced-but-untyped ticket still counts');
+  const mixed = { firstTransactionDate: '2026-08-26T10:00:00', tickets: [
+    { event: { id: EVENT }, originalPrice: 45 },
+    { event: { id: EVENT }, originalPrice: 0 },
+    { event: { id: EVENT }, type: { id: comp }, originalPrice: 45 },
+    { event: { id: 'OTHER' }, originalPrice: 45 },
+  ] };
+  eq(countTicketsForEvent(mixed, EVENT), 1, 'only the paid ticket for this event counts');
 }
 
 section('scanWindow');
