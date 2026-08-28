@@ -10,7 +10,7 @@
 
 // 200 orders/page. Six pages covers ~1200 orders in a month, comfortably above
 // this theatre's volume, and bounds the worst case.
-export const MAX_PAGES_PER_MONTH = 6;
+export const MAX_PAGES_PER_MONTH = 4;
 // A long gap is still bounded so one request cannot scan an entire season.
 export const MAX_SCAN_DAYS = 120;
 
@@ -58,11 +58,20 @@ export function orderDateOf(order) {
 }
 
 /**
- * Walk the orders API month by month, in parallel, counting tickets per day.
- * `fetchPage(url)` must resolve to { orders } or { error }.
+ * Count tickets per day for one event across [scanFrom, scanTo].
+ *
+ * `fetchPage(url)` must resolve to { orders } or { error }. `deadline` is an
+ * epoch-ms cutoff: past it, remaining fetches are abandoned and the result is
+ * returned incomplete, so the caller answers with a partial rather than being
+ * killed mid-flight and returning nothing at all.
+ *
  * Returns { byDay, complete, ordersSeen, ticketsSeen, matchedTickets, lastError }.
  */
-export async function scanOrders({ eventId, scanFrom, scanTo, base, fetchPage, maxPages = MAX_PAGES_PER_MONTH }) {
+export async function scanOrders({
+  eventId, scanFrom, scanTo, base, fetchPage,
+  maxPages = MAX_PAGES_PER_MONTH, deadline = null,
+}) {
+  const months = monthRanges(scanFrom, scanTo);
   const byDay = {};
   let complete = true;
   let ordersSeen = 0;
@@ -70,30 +79,49 @@ export async function scanOrders({ eventId, scanFrom, scanTo, base, fetchPage, m
   let matchedTickets = 0;
   let lastError = null;
 
-  await Promise.all(monthRanges(scanFrom, scanTo).map(async ({ from, to }) => {
-    for (let page = 1; page <= maxPages; page++) {
-      const url = `${base}/orders?DateFrom=${from}&DateTo=${to}&page=${page}&pageSize=200`;
-      const { orders, error } = await fetchPage(url);
-      if (error) {
-        complete = false;
-        lastError = lastError || `${from}..${to} p${page}: ${error}`;
-        return;
-      }
-      if (!orders.length) return;
-      ordersSeen += orders.length;
+  const url = (m, page) => `${base}/orders?DateFrom=${m.from}&DateTo=${m.to}&page=${page}&pageSize=200`;
+  const expired = () => deadline != null && Date.now() > deadline;
+  const note = (msg) => { complete = false; lastError = lastError || msg; };
 
-      for (const order of orders) {
-        ticketsSeen += (order?.tickets || []).length;
-        const date = orderDateOf(order);
-        if (!date || date < scanFrom || date > scanTo) continue;
-        const n = countTicketsForEvent(order, eventId);
-        if (n) { byDay[date] = (byDay[date] || 0) + n; matchedTickets += n; }
-      }
-
-      if (orders.length < 200) return;
-      if (page === maxPages) { complete = false; lastError = lastError || `${from}..${to}: hit ${maxPages}-page ceiling`; }
+  function ingest(orders) {
+    ordersSeen += orders.length;
+    for (const order of orders) {
+      ticketsSeen += (order?.tickets || []).length;
+      const date = orderDateOf(order);
+      if (!date || date < scanFrom || date > scanTo) continue;
+      const n = countTicketsForEvent(order, eventId);
+      if (n) { byDay[date] = (byDay[date] || 0) + n; matchedTickets += n; }
     }
-  }));
+  }
+
+  const get = async (m, page) => {
+    if (expired()) return { m, page, error: 'deadline reached' };
+    const r = await fetchPage(url(m, page));
+    return { m, page, ...r };
+  };
+
+  // Pages are fetched in waves rather than walked one after another. Paging
+  // sequentially meant a month could cost maxPages round trips end to end,
+  // which ran past the platform ceiling and returned 504 — the function was
+  // never failing, only taking too long. Two waves bound the depth instead.
+  const wave1 = await Promise.all(months.map(m => get(m, 1)));
+  const busy = [];
+  for (const { m, orders, error } of wave1) {
+    if (error) { note(`${m.from}..${m.to} p1: ${error}`); continue; }
+    ingest(orders);
+    if (orders.length >= 200) busy.push(m);
+  }
+
+  if (busy.length && maxPages > 1) {
+    const tasks = [];
+    for (const m of busy) for (let p = 2; p <= maxPages; p++) tasks.push([m, p]);
+    const wave2 = await Promise.all(tasks.map(([m, p]) => get(m, p)));
+    for (const { m, page, orders, error } of wave2) {
+      if (error) { note(`${m.from}..${m.to} p${page}: ${error}`); continue; }
+      ingest(orders);
+      if (orders.length >= 200 && page === maxPages) note(`${m.from}..${m.to}: hit ${maxPages}-page ceiling`);
+    }
+  }
 
   return { byDay, complete, ordersSeen, ticketsSeen, matchedTickets, lastError };
 }
