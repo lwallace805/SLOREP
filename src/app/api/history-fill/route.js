@@ -20,7 +20,7 @@
 
 import { NextResponse } from 'next/server';
 import { unstable_cache } from 'next/cache';
-import { getEvents } from '@/lib/spektrix';
+import { getEvents, findEvent } from '@/lib/spektrix';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -96,6 +96,11 @@ async function scanOrders(eventId, scanFrom, scanTo) {
   const base = `https://system.spektrix.com/${process.env.SPEKTRIX_CLIENT_NAME}/api/v3`;
   const byDay = {};
   let complete = true;
+  // Counters so a zero result can be told apart from a failed one: no orders
+  // returned at all is a different fault from orders returned whose tickets
+  // never match this event id.
+  let ordersSeen = 0;
+  let ticketsSeen = 0;
 
   await Promise.all(monthRanges(scanFrom, scanTo).map(async ({ from, to }) => {
     for (let page = 1; page <= MAX_PAGES_PER_MONTH; page++) {
@@ -104,7 +109,9 @@ async function scanOrders(eventId, scanFrom, scanTo) {
       if (!orders) { complete = false; return; }
       if (!orders.length) return;
 
+      ordersSeen += orders.length;
       for (const order of orders) {
+        ticketsSeen += (order.tickets || []).length;
         const rawDate = order.createdAt || order.purchasedAt || order.date || '';
         const orderDate = rawDate.slice(0, 10);
         if (!orderDate || orderDate < scanFrom || orderDate > scanTo) continue;
@@ -118,7 +125,7 @@ async function scanOrders(eventId, scanFrom, scanTo) {
     }
   }));
 
-  return { byDay, complete };
+  return { byDay, complete, ordersSeen, ticketsSeen };
 }
 
 // Past order counts do not change, so this is worth caching hard. The route
@@ -145,7 +152,7 @@ export async function GET(request) {
 
   try {
     const events = await getEvents();
-    const event = events.find(e => e.name?.toLowerCase() === showName.toLowerCase());
+    const event = findEvent(events, showName);
     if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
     const today = new Date().toISOString().slice(0, 10);
@@ -154,7 +161,7 @@ export async function GET(request) {
     const scanTo = today < maxScanEnd ? today : maxScanEnd;
     const truncated = scanTo < today;
 
-    const { byDay, complete } = await cachedScan(event.id, scanFrom, scanTo);
+    const { byDay, complete, ordersSeen, ticketsSeen } = await cachedScan(event.id, scanFrom, scanTo);
 
     const series = [];
     let cumulative = baselineCount;
@@ -179,6 +186,7 @@ export async function GET(request) {
     const found = cumulative - baselineCount;
     return NextResponse.json({
       series, total: cumulative, scanFrom, scanTo, truncated, complete, found,
+      eventId: event.id, eventName: event.name, ordersSeen, ticketsSeen,
     });
   } catch (err) {
     console.error('history-fill error:', err.message);

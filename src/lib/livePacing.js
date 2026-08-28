@@ -3,7 +3,7 @@
  * page pre-fetch. Calling this directly avoids an HTTP round-trip.
  */
 import crypto from 'crypto';
-import { getEvents, getInstanceAvailability } from './spektrix';
+import { getEvents, getInstanceAvailability, findEvent } from './spektrix';
 
 // SLO Rep is in Pacific Time.
 export function getPacificDateString() {
@@ -182,7 +182,7 @@ export async function getLivePacingData(shows) {
 
   await Promise.all(targets.map(async (show) => {
     try {
-      const event = events.find(e => e.name?.toLowerCase() === show.name.toLowerCase());
+      const event = findEvent(events, show.name);
       if (!event) return;
 
       const [oy, om, od] = show.open.split('-').map(Number);
