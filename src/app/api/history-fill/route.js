@@ -21,10 +21,14 @@ export const dynamic = 'force-dynamic';
 // rather than letting the platform default cut a scan short.
 export const maxDuration = 60;
 
-// A generous ceiling, not a tight one. An earlier version aborted at 8s, which
-// killed every month batch at once and returned ordersSeen: 0 — orders are slow
-// enough that ticket-mix, the caller known to work, sets no timeout at all.
-const REQUEST_TIMEOUT_MS = 25000;
+// Per-request ceiling. 25s was too generous once several pages could stack up:
+// the route returned 504 rather than an answer. Individual order pages that
+// take longer than this are not going to complete inside the route's budget.
+const REQUEST_TIMEOUT_MS = 12000;
+// Overall budget, comfortably inside maxDuration. Past it the scan stops and
+// answers with what it has, flagged incomplete. Being killed by the gateway
+// returns nothing at all, which is strictly worse than a partial answer.
+const SCAN_BUDGET_MS = 40000;
 
 function spektrixSign(url) {
   const date = new Date().toUTCString();
@@ -60,7 +64,7 @@ async function fetchPage(url) {
 
 async function runScan(eventId, scanFrom, scanTo) {
   const base = `https://system.spektrix.com/${process.env.SPEKTRIX_CLIENT_NAME}/api/v3`;
-  return scanOrders({ eventId, scanFrom, scanTo, base, fetchPage });
+  return scanOrders({ eventId, scanFrom, scanTo, base, fetchPage, deadline: Date.now() + SCAN_BUDGET_MS });
 }
 
 // Past order counts do not change, so a successful scan is worth caching hard.

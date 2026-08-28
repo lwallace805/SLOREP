@@ -141,5 +141,30 @@ section('buildSeries');
   eq(r.total - 31, 0, 'found = 0');
 }
 
+section('scanOrders — page waves and deadline');
+{
+  // Two full pages in one month: page 1 in wave one, the rest in wave two.
+  const many = Array.from({ length: 400 }, () => order('2026-06-10', 1));
+  const api = mockApi(many, { forceFullPages: true, pageSize: 200 });
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-01', scanTo: '2026-06-30', base: BASE, fetchPage: api.fetchPage, maxPages: 4 });
+  const pages = api.calls.map(u => Number(new URL(u).searchParams.get('page'))).sort();
+  eq(pages, [1, 2, 3, 4], 'a full first page triggers the remaining pages');
+  eq(r.ordersSeen > 0, true, 'orders ingested across waves');
+}
+{
+  // A month whose first page is not full must not fetch any further pages.
+  const api = mockApi([order('2026-06-10', 3)]);
+  await scanOrders({ eventId: EVENT, scanFrom: '2026-06-01', scanTo: '2026-06-30', base: BASE, fetchPage: api.fetchPage, maxPages: 4 });
+  eq(api.calls.length, 1, 'a short first page ends the month');
+}
+{
+  // An expired deadline abandons the scan rather than running past the budget.
+  const api = mockApi([order('2026-06-10', 3)]);
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-02', scanTo: '2026-08-28', base: BASE, fetchPage: api.fetchPage, deadline: Date.now() - 1 });
+  eq(api.calls.length, 0, 'no requests made once the deadline has passed');
+  eq(r.complete, false, 'marked incomplete');
+  eq(/deadline/.test(r.lastError || ''), true, 'lastError names the deadline');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
