@@ -226,9 +226,13 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     // and its closing point lands on today's day number — where it would
     // suppress the live total rather than be replaced by it. A flat line that
     // says "nothing sold for three months" is worse than no line at all.
+    // Trust the gap when it accounts for most of the movement, whether or not
+    // every window came back. One contended week out of thirteen should not
+    // throw away 736 of 858 measured tickets and leave a flat line in their
+    // place; the banner still says the shape is partial.
     const gapTrusted =
       gap?.length > 0 &&
-      (unexplained < 20 || (meta?.complete && (meta.found ?? 0) >= unexplained * 0.5));
+      (unexplained < 20 || (meta?.found ?? 0) >= unexplained * 0.5);
 
     if (gapTrusted) {
       const maxStaticD = base[base.length - 1]?.d ?? -Infinity;
@@ -301,7 +305,9 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     const unexplained = liveNow - lastStatic.c;
     if (unexplained < 20) return false;               // nothing meaningful to explain
     if (!meta) return true;                            // fill never returned
-    return !meta.complete || meta.found < unexplained * 0.5;
+    // Warn while any window is missing or the fill is materially short, even
+    // though a substantially complete gap is still drawn.
+    return !meta.complete || meta.found < unexplained * 0.9;
   }, [current, gapPartial, liveData]);
 
   const [peerCats, setPeerCats] = useState(new Set([current.cat]));

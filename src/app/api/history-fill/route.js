@@ -21,10 +21,11 @@ export const dynamic = 'force-dynamic';
 // rather than letting the platform default cut a scan short.
 export const maxDuration = 60;
 
-// Per-request ceiling. 25s was too generous once several pages could stack up:
-// the route returned 504 rather than an answer. Individual order pages that
-// take longer than this are not going to complete inside the route's budget.
-const REQUEST_TIMEOUT_MS = 12000;
+// Per-request ceiling. Windows all run in one parallel wave, so this bounds the
+// whole scan rather than stacking: a full 88-day run completes in about 18s.
+// 12s was tight enough that a single contended window lost the race and dropped
+// its week of data.
+const REQUEST_TIMEOUT_MS = 20000;
 // Overall budget, comfortably inside maxDuration. Past it the scan stops and
 // answers with what it has, flagged incomplete. Being killed by the gateway
 // returns nothing at all, which is strictly worse than a partial answer.
