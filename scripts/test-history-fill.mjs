@@ -202,5 +202,19 @@ section('scanOrders — page waves and deadline');
   eq(/deadline/.test(r.lastError || ''), true, 'lastError names the deadline');
 }
 
+section('duplicate orders across windows');
+{
+  // The same order returned in two windows — Spektrix matches an order whose
+  // transactions touch the range, and a payment plan touches several.
+  const dup = { id: 'ORD1', firstTransactionDate: '2026-06-10T10:00:00',
+                tickets: [{ event: { id: EVENT }, originalPrice: 45 }, { event: { id: EVENT }, originalPrice: 45 }] };
+  const api = { calls: [], fetchPage: async (u) => { api.calls.push(u); return { orders: [dup] }; } };
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-28', base: BASE, fetchPage: api.fetchPage });
+  eq(api.calls.length >= 3, true, 'several windows each returned the order');
+  eq(r.byDay, { '2026-06-10': 2 }, 'its tickets are counted once, not once per window');
+  eq(r.matchedTickets, 2, 'matched total is not inflated');
+  eq(r.uniqueOrders, 1, 'one unique order');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

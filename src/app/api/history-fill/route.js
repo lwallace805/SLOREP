@@ -131,6 +131,7 @@ export async function GET(request) {
       eventId: event.id,
       eventName: event.name,
       ordersSeen: scan.ordersSeen,
+      uniqueOrders: scan.uniqueOrders,
       ticketsSeen: scan.ticketsSeen,
       matchedTickets: scan.matchedTickets,
       lastError: scan.lastError,
