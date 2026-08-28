@@ -56,8 +56,8 @@ const order = (date, n, evt = EVENT) => ({
 section('dateWindows');
 {
   const w = dateWindows('2026-06-02', '2026-08-28');
-  eq(w.length, 13, '88 days becomes 13 weekly windows');
-  eq(w[0], { from: '2026-06-02', to: '2026-06-08' }, 'first window is seven days');
+  eq(w.length, 22, '88 days becomes 22 windows');
+  eq(w[0], { from: '2026-06-02', to: '2026-06-05' }, 'first window is four days');
   eq(w[w.length - 1].to, '2026-08-28', 'last window ends on the requested end');
   let contiguous = true;
   for (let i = 1; i < w.length; i++) if (addDays(w[i - 1].to, 1) !== w[i].from) contiguous = false;
@@ -66,7 +66,7 @@ section('dateWindows');
 eq(dateWindows('2026-08-28', '2026-08-28').map(r => `${r.from}..${r.to}`),
    ['2026-08-28..2026-08-28'], 'single day');
 eq(dateWindows('2025-12-28', '2026-01-05').map(r => `${r.from}..${r.to}`),
-   ['2025-12-28..2026-01-03', '2026-01-04..2026-01-05'], 'crosses year boundary');
+   ['2025-12-28..2025-12-31', '2026-01-01..2026-01-04', '2026-01-05..2026-01-05'], 'crosses year boundary');
 eq(dateWindows('2026-08-28', '2026-06-02'), [], 'inverted range yields nothing');
 
 section('ticket → event matching');
@@ -135,17 +135,17 @@ section('scanOrders — failure modes');
 {
   // Fail one mid-July window that holds none of the test orders, so the good
   // windows must still contribute everything.
-  const api = mockApi([order('2026-06-10', 5), order('2026-08-02', 9)], { failWindowFrom: '2026-07-07' });
+  const api = mockApi([order('2026-06-10', 5), order('2026-08-02', 9)], { failWindowFrom: '2026-07-08' });
   const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-02', scanTo: '2026-08-28', base: BASE, fetchPage: api.fetchPage });
   eq(r.complete, false, 'one bad window marks the whole scan incomplete');
   eq(r.byDay, { '2026-06-10': 5, '2026-08-02': 9 }, 'the windows that worked still contribute');
-  eq(/2026-07-07/.test(r.lastError || ''), true, 'lastError names the failing window');
+  eq(/2026-07-08/.test(r.lastError || ''), true, 'lastError names the failing window');
 }
 {
   // Every page full ⇒ pagination runs to the ceiling and must flag itself.
   const many = Array.from({ length: 400 }, (_, i) => order('2026-06-10', 1));
   const api = mockApi(many, { forceFullPages: true, pageSize: 200 });
-  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-14', base: BASE, fetchPage: api.fetchPage, maxPages: 2 });
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: api.fetchPage, maxPages: 2 });
   eq(r.complete, false, 'hitting the page ceiling marks the scan incomplete');
   eq(/ceiling/.test(r.lastError || ''), true, 'lastError names the ceiling');
 }
@@ -182,7 +182,7 @@ section('scanOrders — page waves and deadline');
   // Two full pages in one month: page 1 in wave one, the rest in wave two.
   const many = Array.from({ length: 400 }, () => order('2026-06-10', 1));
   const api = mockApi(many, { forceFullPages: true, pageSize: 200 });
-  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-14', base: BASE, fetchPage: api.fetchPage, maxPages: 4 });
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: api.fetchPage, maxPages: 4 });
   const pages = api.calls.map(u => Number(new URL(u).searchParams.get('page'))).sort();
   eq(pages, [1, 2, 3, 4], 'a full first page triggers the remaining pages');
   eq(r.ordersSeen > 0, true, 'orders ingested across waves');
@@ -190,7 +190,7 @@ section('scanOrders — page waves and deadline');
 {
   // A month whose first page is not full must not fetch any further pages.
   const api = mockApi([order('2026-06-10', 3)]);
-  await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-14', base: BASE, fetchPage: api.fetchPage, maxPages: 4 });
+  await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: api.fetchPage, maxPages: 4 });
   eq(api.calls.length, 1, 'a short first page ends the window');
 }
 {
