@@ -177,7 +177,12 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
       .then(data => {
         if (cancelled || data.error || !data.series?.length) return;
         setGapSeries(prev => ({ ...prev, [show.name]: data.series }));
-        setGapPartial(prev => ({ ...prev, [show.name]: { complete: data.complete !== false, found: data.found ?? 0 } }));
+        setGapPartial(prev => ({ ...prev, [show.name]: {
+            complete: data.complete !== false,
+            found: data.found ?? 0,
+            lastError: data.lastError || null,
+            ordersSeen: data.ordersSeen ?? null,
+          } }));
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -598,6 +603,12 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
               {gapUnmeasured && (
                 <div style={{ marginTop: 6, fontSize: 11, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 6, padding: "5px 9px", display: "inline-block" }}>
                   Day-by-day history unavailable between the last export and today — the curve jumps rather than climbing. Totals are correct; the shape in between is not.
+                  {gapPartial[current.name]?.lastError && (
+                    <div style={{ marginTop: 3, fontSize: 10, color: "#a16207", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
+                      {gapPartial[current.name].ordersSeen != null && `orders seen: ${gapPartial[current.name].ordersSeen} · `}
+                      {gapPartial[current.name].lastError}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -906,6 +917,12 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                     const soldNow = (live?.c > 0) ? live.c : (lastPt?.c ?? 0);
                     const capNow = (live?.cap > 0) ? live.cap : s.cap;
                     const pct = capNow ? (soldNow / capNow * 100) : 0;
+                    // A show that has opened but whose series stops before its
+                    // opening night has no usable total — the export predates
+                    // the run. Finding Nemo read 5% that way, which is its
+                    // June figure, not its result. Say nothing rather than that.
+                    const todayStr = new Date().toISOString().slice(0, 10);
+                    const noTotal = s.open <= todayStr && !(live?.c > 0) && (lastPt?.d ?? 0) < 0;
                     const isCurrent = s.name === currentName;
                     const color = CATEGORIES[s.cat]?.color || "#7a7570";
                     const isUpcoming = s.open > new Date().toISOString().slice(0, 10);
@@ -918,10 +935,14 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                           </div>
                         </div>
                         <div style={{ width: 60, height: 4, background: "#f0ebe4", borderRadius: 100, flexShrink: 0 }}>
-                          {!isUpcoming && <div style={{ width: Math.min(pct, 100) + "%", height: "100%", background: color, borderRadius: 100 }} />}
+                          {!isUpcoming && !noTotal && <div style={{ width: Math.min(pct, 100) + "%", height: "100%", background: color, borderRadius: 100 }} />}
                         </div>
                         <div style={{ fontSize: 12, fontWeight: 600, color, width: 36, textAlign: "right", flexShrink: 0 }}>
-                          {isUpcoming ? <span style={{ color: "#bbb1a0", fontWeight: 400 }}>soon</span> : `${pct.toFixed(0)}%`}
+                          {isUpcoming
+                            ? <span style={{ color: "#bbb1a0", fontWeight: 400 }}>soon</span>
+                            : noTotal
+                              ? <span style={{ color: "#bbb1a0", fontWeight: 400 }} title="No live total available for this show">&mdash;</span>
+                              : `${pct.toFixed(0)}%`}
                         </div>
                       </div>
                     );

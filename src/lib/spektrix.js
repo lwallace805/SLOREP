@@ -64,11 +64,13 @@ export async function getEvents() {
 function normaliseTitle(name) {
   return (name || '')
     .toLowerCase()
-    .replace(/[^a-z0-9 ]+/g, ' ')          // punctuation to space
-    .replace(/\b(the|a|an)\b/g, ' ')       // leading articles carry no signal
-    .replace(/\b(jr|junior|the musical|a musical)\b/g, ' ')
+    .replace(/[^a-z0-9 ]+/g, ' ')                        // punctuation to space
+    .replace(/\b(the musical|a musical|jr|junior)\b/g, ' ') // billing suffixes
     .replace(/\s+/g, ' ')
-    .trim();
+    .trim()
+    // Leading article only. Stripping "a"/"the" anywhere collapses distinct
+    // titles — "Nemo A" became "nemo" and matched a bare "Nemo".
+    .replace(/^(the|a|an) /, '');
 }
 
 export function findEvent(events, showName) {

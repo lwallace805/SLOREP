@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "node scripts/test-history-fill.mjs && node scripts/test-event-matching.mjs"
   },
   "dependencies": {
     "next": "16.2.6",
