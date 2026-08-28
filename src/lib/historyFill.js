@@ -10,7 +10,7 @@
 
 // 200 orders/page. Six pages covers ~1200 orders in a month, comfortably above
 // this theatre's volume, and bounds the worst case.
-export const MAX_PAGES_PER_MONTH = 4;
+export const MAX_PAGES_PER_MONTH = 8;
 // A long gap is still bounded so one request cannot scan an entire season.
 export const MAX_SCAN_DAYS = 120;
 
@@ -120,6 +120,11 @@ export async function scanOrders({
   let ticketsSeen = 0;
   let matchedTickets = 0;
   let lastError = null;
+  // Windows are contiguous, but Spektrix matches an order whose transactions
+  // touch the range, and an order paid over several weeks touches several
+  // windows. Counting its tickets once per window inflated the total well past
+  // the real one and made it drift as more pages were fetched.
+  const seenOrders = new Set();
   // Structural sample only — key names and event ids, never customer fields.
   // matchedTickets came back 0 against 254 real tickets, so the assumed shape
   // of a ticket is wrong and guessing again is not good enough.
@@ -132,6 +137,11 @@ export async function scanOrders({
   function ingest(orders) {
     ordersSeen += orders.length;
     for (const order of orders) {
+      const oid = order?.id;
+      if (oid) {
+        if (seenOrders.has(oid)) continue;
+        seenOrders.add(oid);
+      }
       const tix = order?.tickets || [];
       ticketsSeen += tix.length;
       if (!shape.orderKeys && order) shape.orderKeys = Object.keys(order).slice(0, 40);
@@ -183,7 +193,7 @@ export async function scanOrders({
     }
   }
 
-  return { byDay, complete, ordersSeen, ticketsSeen, matchedTickets, lastError, shape };
+  return { byDay, complete, ordersSeen, ticketsSeen, matchedTickets, lastError, shape, uniqueOrders: seenOrders.size };
 }
 
 /**
