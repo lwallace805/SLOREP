@@ -8,7 +8,7 @@
  * every failure mode the route reports.
  */
 import {
-  monthRanges, scanOrders, buildSeries, scanWindow,
+  dateWindows, scanOrders, buildSeries, scanWindow,
   countTicketsForEvent, orderDateOf, addDays, daysBetween,
 } from '../src/lib/historyFill.js';
 
@@ -33,7 +33,7 @@ function mockApi(orders, opts = {}) {
       const u = new URL(url);
       const from = u.searchParams.get('DateFrom'), to = u.searchParams.get('DateTo');
       const page = Number(u.searchParams.get('page'));
-      if (opts.failMonth && from.startsWith(opts.failMonth)) return { error: 'http 500' };
+      if (opts.failWindowFrom && from === opts.failWindowFrom) return { error: 'http 500' };
       const inWindow = orders.filter(o => {
         const d = orderDateOf(o);
         return d >= from && d <= to;
@@ -42,33 +42,50 @@ function mockApi(orders, opts = {}) {
       const slice = inWindow.slice((page - 1) * size, page * size);
       // Emulate a full page so the caller keeps paginating.
       if (opts.forceFullPages && slice.length) {
-        while (slice.length < 200) slice.push({ createdAt: from + 'T10:00:00Z', tickets: [] });
+        while (slice.length < 200) slice.push({ firstTransactionDate: from + 'T10:00:00', tickets: [] });
       }
       return { orders: slice };
     },
   };
 }
 const order = (date, n, evt = EVENT) => ({
-  createdAt: `${date}T12:00:00Z`,
+  firstTransactionDate: `${date}T12:00:00`,
   tickets: Array.from({ length: n }, () => ({ event: { id: evt } })),
 });
 
-section('monthRanges');
-eq(monthRanges('2026-06-02', '2026-08-28').map(r => `${r.from}..${r.to}`),
-   ['2026-06-02..2026-06-30', '2026-07-01..2026-07-31', '2026-08-01..2026-08-28'], 'spans three months, clipped');
-eq(monthRanges('2026-08-28', '2026-08-28').map(r => `${r.from}..${r.to}`),
+section('dateWindows');
+{
+  const w = dateWindows('2026-06-02', '2026-08-28');
+  eq(w.length, 13, '88 days becomes 13 weekly windows');
+  eq(w[0], { from: '2026-06-02', to: '2026-06-08' }, 'first window is seven days');
+  eq(w[w.length - 1].to, '2026-08-28', 'last window ends on the requested end');
+  let contiguous = true;
+  for (let i = 1; i < w.length; i++) if (addDays(w[i - 1].to, 1) !== w[i].from) contiguous = false;
+  eq(contiguous, true, 'windows are contiguous with no gaps or overlaps');
+}
+eq(dateWindows('2026-08-28', '2026-08-28').map(r => `${r.from}..${r.to}`),
    ['2026-08-28..2026-08-28'], 'single day');
-eq(monthRanges('2025-12-20', '2026-01-05').map(r => `${r.from}..${r.to}`),
-   ['2025-12-20..2025-12-31', '2026-01-01..2026-01-05'], 'crosses year boundary');
-eq(monthRanges('2026-08-28', '2026-06-02'), [], 'inverted range yields nothing');
+eq(dateWindows('2025-12-28', '2026-01-05').map(r => `${r.from}..${r.to}`),
+   ['2025-12-28..2026-01-03', '2026-01-04..2026-01-05'], 'crosses year boundary');
+eq(dateWindows('2026-08-28', '2026-06-02'), [], 'inverted range yields nothing');
 
 section('ticket → event matching');
 eq(countTicketsForEvent({ tickets: [{ event: { id: 'EVT1' } }, { event: { id: 'OTHER' } }] }, 'EVT1'), 1, 'nested object id');
 eq(countTicketsForEvent({ tickets: [{ event: 'EVT1' }, { event: 'EVT1' }] }, 'EVT1'), 2, 'bare string id');
 eq(countTicketsForEvent({ tickets: [{}, { event: null }] }, 'EVT1'), 0, 'missing event does not match');
 eq(countTicketsForEvent({}, 'EVT1'), 0, 'order with no tickets');
-eq(orderDateOf({ purchasedAt: '2026-07-04T09:00:00Z' }), '2026-07-04', 'falls back to purchasedAt');
+eq(orderDateOf({ firstTransactionDate: '2026-07-04T09:00:00' }), '2026-07-04', "reads Spektrix's firstTransactionDate");
+eq(orderDateOf({ firstTransactionDateUtc: '2026-07-05T02:00:00Z' }), '2026-07-05', 'falls back to the Utc variant');
+eq(orderDateOf({ firstTransactionDate: '2026-07-04T09:00:00', firstTransactionDateUtc: '2026-07-05T02:00:00Z' }),
+   '2026-07-04', 'local date wins so days bucket against the theatre calendar');
+eq(orderDateOf({ purchasedAt: '2026-07-04T09:00:00Z' }), '2026-07-04', 'still accepts purchasedAt');
 eq(orderDateOf({}), '', 'no date field');
+{
+  // The exact regression: a real Spektrix order carrying the right event id.
+  const real = { firstTransactionDate: '2026-08-26T14:03:00', tickets: [{ event: { id: 'EVT1' } }, { event: { id: 'OTHER' } }] };
+  eq(orderDateOf(real) !== '', true, 'a real order shape yields a usable date');
+  eq(countTicketsForEvent(real, 'EVT1'), 1, 'and its tickets match');
+}
 
 section('scanWindow');
 eq(scanWindow('2026-06-02', '2026-08-28'), { scanFrom: '2026-06-02', scanTo: '2026-08-28', truncated: false }, '88-day gap fits inside the 120-day cap');
@@ -85,7 +102,7 @@ section('scanOrders — happy path');
   eq(r.matchedTickets, 20, 'matched ticket total');
   eq(r.ticketsSeen, 22, 'ticketsSeen counts every ticket, matched or not');
   eq(r.ordersSeen, 4, 'ordersSeen counts every order');
-  eq(api.calls.length, 3, 'one call per month, no needless pagination');
+  eq(api.calls.length, dateWindows('2026-06-02', '2026-08-28').length, 'one call per window, no needless pagination');
   eq(r.lastError, null, 'no error');
 }
 
@@ -99,17 +116,19 @@ section('scanOrders — failure modes');
   eq(/timeout after 25000ms/.test(r.lastError || ''), true, 'lastError names the timeout');
 }
 {
-  const api = mockApi([order('2026-06-10', 5), order('2026-08-02', 9)], { failMonth: '2026-07' });
+  // Fail one mid-July window that holds none of the test orders, so the good
+  // windows must still contribute everything.
+  const api = mockApi([order('2026-06-10', 5), order('2026-08-02', 9)], { failWindowFrom: '2026-07-07' });
   const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-02', scanTo: '2026-08-28', base: BASE, fetchPage: api.fetchPage });
-  eq(r.complete, false, 'one bad month marks the whole scan incomplete');
-  eq(r.byDay, { '2026-06-10': 5, '2026-08-02': 9 }, 'the months that worked still contribute');
-  eq(/2026-07/.test(r.lastError || ''), true, 'lastError names the failing month');
+  eq(r.complete, false, 'one bad window marks the whole scan incomplete');
+  eq(r.byDay, { '2026-06-10': 5, '2026-08-02': 9 }, 'the windows that worked still contribute');
+  eq(/2026-07-07/.test(r.lastError || ''), true, 'lastError names the failing window');
 }
 {
   // Every page full ⇒ pagination runs to the ceiling and must flag itself.
   const many = Array.from({ length: 400 }, (_, i) => order('2026-06-10', 1));
   const api = mockApi(many, { forceFullPages: true, pageSize: 200 });
-  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-01', scanTo: '2026-06-30', base: BASE, fetchPage: api.fetchPage, maxPages: 2 });
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-14', base: BASE, fetchPage: api.fetchPage, maxPages: 2 });
   eq(r.complete, false, 'hitting the page ceiling marks the scan incomplete');
   eq(/ceiling/.test(r.lastError || ''), true, 'lastError names the ceiling');
 }
@@ -146,7 +165,7 @@ section('scanOrders — page waves and deadline');
   // Two full pages in one month: page 1 in wave one, the rest in wave two.
   const many = Array.from({ length: 400 }, () => order('2026-06-10', 1));
   const api = mockApi(many, { forceFullPages: true, pageSize: 200 });
-  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-01', scanTo: '2026-06-30', base: BASE, fetchPage: api.fetchPage, maxPages: 4 });
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-14', base: BASE, fetchPage: api.fetchPage, maxPages: 4 });
   const pages = api.calls.map(u => Number(new URL(u).searchParams.get('page'))).sort();
   eq(pages, [1, 2, 3, 4], 'a full first page triggers the remaining pages');
   eq(r.ordersSeen > 0, true, 'orders ingested across waves');
@@ -154,8 +173,8 @@ section('scanOrders — page waves and deadline');
 {
   // A month whose first page is not full must not fetch any further pages.
   const api = mockApi([order('2026-06-10', 3)]);
-  await scanOrders({ eventId: EVENT, scanFrom: '2026-06-01', scanTo: '2026-06-30', base: BASE, fetchPage: api.fetchPage, maxPages: 4 });
-  eq(api.calls.length, 1, 'a short first page ends the month');
+  await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-14', base: BASE, fetchPage: api.fetchPage, maxPages: 4 });
+  eq(api.calls.length, 1, 'a short first page ends the window');
 }
 {
   // An expired deadline abandons the scan rather than running past the budget.
