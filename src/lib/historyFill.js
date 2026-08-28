@@ -26,9 +26,10 @@ export function daysBetween(a, b) {
 
 // Orders are filtered server-side and the cost scales with how many fall in the
 // window: a whole month exceeded a 12s request ceiling, while four days answered
-// comfortably. A week keeps each window under one 200-order page at this
-// theatre's volume, and the windows all run in parallel anyway.
-export const WINDOW_DAYS = 7;
+// comfortably. Four days also keeps the June subscription rush inside the page
+// ceiling and cuts how many windows a long-running order can touch. Windows all
+// run in parallel, so more of them costs nothing in depth.
+export const WINDOW_DAYS = 4;
 
 /** Split [from, to] into consecutive windows of at most `days` days. */
 export function dateWindows(from, to, days = WINDOW_DAYS) {
