@@ -78,6 +78,10 @@ export async function scanOrders({
   let ticketsSeen = 0;
   let matchedTickets = 0;
   let lastError = null;
+  // Structural sample only — key names and event ids, never customer fields.
+  // matchedTickets came back 0 against 254 real tickets, so the assumed shape
+  // of a ticket is wrong and guessing again is not good enough.
+  const shape = { ticketKeys: null, orderKeys: null, eventType: null, eventKeys: null, eventIds: [] };
 
   const url = (m, page) => `${base}/orders?DateFrom=${m.from}&DateTo=${m.to}&page=${page}&pageSize=200`;
   const expired = () => deadline != null && Date.now() > deadline;
@@ -86,7 +90,21 @@ export async function scanOrders({
   function ingest(orders) {
     ordersSeen += orders.length;
     for (const order of orders) {
-      ticketsSeen += (order?.tickets || []).length;
+      const tix = order?.tickets || [];
+      ticketsSeen += tix.length;
+      if (!shape.orderKeys && order) shape.orderKeys = Object.keys(order).slice(0, 40);
+      if (tix.length) {
+        if (!shape.ticketKeys) shape.ticketKeys = Object.keys(tix[0]).slice(0, 40);
+        for (const t of tix) {
+          const ev = t?.event;
+          if (ev != null && shape.eventType === null) {
+            shape.eventType = typeof ev;
+            if (typeof ev === 'object') shape.eventKeys = Object.keys(ev).slice(0, 20);
+          }
+          const id = typeof ev === 'string' ? ev : ev?.id;
+          if (id && shape.eventIds.length < 8 && !shape.eventIds.includes(id)) shape.eventIds.push(id);
+        }
+      }
       const date = orderDateOf(order);
       if (!date || date < scanFrom || date > scanTo) continue;
       const n = countTicketsForEvent(order, eventId);
@@ -123,7 +141,7 @@ export async function scanOrders({
     }
   }
 
-  return { byDay, complete, ordersSeen, ticketsSeen, matchedTickets, lastError };
+  return { byDay, complete, ordersSeen, ticketsSeen, matchedTickets, lastError, shape };
 }
 
 /**
