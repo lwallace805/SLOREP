@@ -108,6 +108,9 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
   );
   const [currentName, setCurrentName] = useState(defaultCurrent);
   const [liveData, setLiveData] = useState(initialLiveData);
+  // Per show: true when the order scan behind the gap fill came back short, so
+  // the stretch between the export and today is understated rather than measured.
+  const [gapPartial, setGapPartial] = useState({});
   const [liveUpdatedAt, setLiveUpdatedAt] = useState(
     Object.keys(initialLiveData).length ? new Date() : null
   );
@@ -174,6 +177,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
       .then(data => {
         if (cancelled || data.error || !data.series?.length) return;
         setGapSeries(prev => ({ ...prev, [show.name]: data.series }));
+        setGapPartial(prev => ({ ...prev, [show.name]: { complete: data.complete !== false, found: data.found ?? 0 } }));
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -242,6 +246,28 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
   }), [liveData, liveApplied, gapSeries, onSaleNames]);
 
   const current = liveDATA.find(s => s.name === currentName) || liveDATA[0];
+
+  /**
+   * True when the curve between the last export point and today is not real.
+   * Either the order scan came back short, or it completed but found nothing
+   * while the live total sits well above the last export figure — which cannot
+   * both be true. Drawing a flat line across that stretch asserts "nothing sold
+   * for weeks, then everything sold today", which is what the gap looked like
+   * before this was surfaced.
+   */
+  const gapUnmeasured = useMemo(() => {
+    if (!onSale(current)) return false;
+    const meta = gapPartial[current.name];
+    const staticShow = DATA.find(x => x.name === current.name);
+    const lastStatic = staticShow?.series?.[staticShow.series.length - 1];
+    const liveNow = liveData[current.name]?.c;
+    if (!lastStatic || !liveNow) return false;
+    const unexplained = liveNow - lastStatic.c;
+    if (unexplained < 20) return false;               // nothing meaningful to explain
+    if (!meta) return true;                            // fill never returned
+    return !meta.complete || meta.found < unexplained * 0.5;
+  }, [current, gapPartial, liveData]);
+
   const [peerCats, setPeerCats] = useState(new Set([current.cat]));
   const [peerSeasons, setPeerSeasons] = useState(new Set(["22-23", "23-24", "24-25", "25-26", "26-27"]));
   const [excludeInProgress, setExcludeInProgress] = useState(true);
@@ -558,6 +584,11 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
               <div className="pd-serif" style={{ fontSize: 16, fontWeight: 600, marginTop: 2, color: "#1c1a18" }}>
                 {currentName} <span style={{ color: "#7a7570", fontWeight: 400, fontSize: 14 }}>vs peer median + 25–75th percentile band</span>
               </div>
+              {gapUnmeasured && (
+                <div style={{ marginTop: 6, fontSize: 11, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 6, padding: "5px 9px", display: "inline-block" }}>
+                  Day-by-day history unavailable between the last export and today — the curve jumps rather than climbing. Totals are correct; the shape in between is not.
+                </div>
+              )}
             </div>
             <div style={{ fontSize: 11, color: "#7a7570", display: "flex", gap: 14 }}>
               <Legend swatch="#1c1a18" label="this show" />
@@ -856,8 +887,14 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                 <div style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 15, fontWeight: 600, color: "#1c1a18", marginBottom: 12 }}>{currentSeason} at a glance</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {seasonShows.map(s => {
+                    // The static series stops at the last export, so for a show
+                    // that has run since then its last point is not its total.
+                    // Prefer the live Spektrix reading wherever we have one.
                     const lastPt = s.series[s.series.length - 1];
-                    const pct = lastPt && s.cap ? (lastPt.c / s.cap * 100) : 0;
+                    const live = liveData[s.name];
+                    const soldNow = (live?.c > 0) ? live.c : (lastPt?.c ?? 0);
+                    const capNow = (live?.cap > 0) ? live.cap : s.cap;
+                    const pct = capNow ? (soldNow / capNow * 100) : 0;
                     const isCurrent = s.name === currentName;
                     const color = CATEGORIES[s.cat]?.color || "#7a7570";
                     const isUpcoming = s.open > new Date().toISOString().slice(0, 10);
