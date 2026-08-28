@@ -51,6 +51,47 @@ export async function getEvents() {
 }
 
 /**
+ * Season-data show names and Spektrix event names do not always agree — the
+ * season file says "Finding Nemo" where Spektrix may carry a fuller billing
+ * title. An exact-only match silently drops those shows: they simply never get
+ * live data, and the dashboard shows their frozen export figure instead, with
+ * nothing to indicate anything failed.
+ *
+ * Exact match wins. Otherwise fall back to a normalised comparison, and accept
+ * a prefix or substring hit only when exactly one event matches, so a loose
+ * name can never bind to the wrong production.
+ */
+function normaliseTitle(name) {
+  return (name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, ' ')          // punctuation to space
+    .replace(/\b(the|a|an)\b/g, ' ')       // leading articles carry no signal
+    .replace(/\b(jr|junior|the musical|a musical)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function findEvent(events, showName) {
+  if (!showName) return null;
+  const wanted = showName.toLowerCase();
+  const exact = (events || []).find(e => e.name?.toLowerCase() === wanted);
+  if (exact) return exact;
+
+  const target = normaliseTitle(showName);
+  if (!target) return null;
+  const named = (events || []).filter(e => e.name);
+
+  const normEqual = named.filter(e => normaliseTitle(e.name) === target);
+  if (normEqual.length === 1) return normEqual[0];
+
+  const partial = named.filter(e => {
+    const n = normaliseTitle(e.name);
+    return n.startsWith(target) || target.startsWith(n) || n.includes(target);
+  });
+  return partial.length === 1 ? partial[0] : null;
+}
+
+/**
  * Get per-instance availability for an event.
  * Returns [{dt, sold, cap, pct}] sorted by dt asc.
  *

@@ -187,28 +187,39 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     if (!onSale(show)) return show.series;
     const live = liveData[show.name];
     const gap  = gapSeries[show.name]; // [{d,c}] from history-fill
+    const meta = gapPartial[show.name];
     const realCap = (live?.cap > 0 ? live.cap : show.cap);
+    const pctOf = c => (realCap > 0 ? Math.round(c / realCap * 1000) / 10 : 0);
 
     // Start from static export points
     let base = [...show.series];
+    const lastStaticC = base[base.length - 1]?.c ?? 0;
+    const unexplained = (live?.c ?? 0) - lastStaticC;
 
-    // Merge gap series (real per-day counts from orders)
-    if (gap?.length) {
+    // Only merge the gap when it actually accounts for the movement. A scan that
+    // completes but matches no orders yields a flat run at the export figure,
+    // and its closing point lands on today's day number — where it would
+    // suppress the live total rather than be replaced by it. A flat line that
+    // says "nothing sold for three months" is worse than no line at all.
+    const gapTrusted =
+      gap?.length > 0 &&
+      (unexplained < 20 || (meta?.complete && (meta.found ?? 0) >= unexplained * 0.5));
+
+    if (gapTrusted) {
       const maxStaticD = base[base.length - 1]?.d ?? -Infinity;
-      const newPts = gap
-        .filter(pt => pt.d > maxStaticD)
-        .map(pt => ({ d: pt.d, c: pt.c, p: realCap > 0 ? Math.round(pt.c / realCap * 1000) / 10 : 0 }));
-      base = [...base, ...newPts];
+      base = [
+        ...base,
+        ...gap.filter(pt => pt.d > maxStaticD).map(pt => ({ d: pt.d, c: pt.c, p: pctOf(pt.c) })),
+      ];
     }
 
-    // Finally append today's live point if more recent
-    if (live?.c > 0) {
-      const maxD = base[base.length - 1]?.d ?? -Infinity;
-      if (live.d > maxD) {
-        const c = Math.max(live.c, base[base.length - 1]?.c ?? 0);
-        const p = realCap > 0 ? Math.round(c / realCap * 1000) / 10 : 0;
-        base = [...base, { d: live.d, c, p }];
-      }
+    // The live availability reading is the authority on how many seats are gone
+    // right now. It supersedes anything sitting on or after its day instead of
+    // yielding to it on a tie.
+    if (live?.c > 0 && live.d >= (base[base.length - 1]?.d ?? -Infinity) ) {
+      base = base.filter(pt => pt.d < live.d);
+      const c = Math.max(live.c, base[base.length - 1]?.c ?? 0);
+      base = [...base, { d: live.d, c, p: pctOf(c) }];
     }
 
     return base;
@@ -243,7 +254,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
         ? liveData[show.name].cap
         : show.cap,
     };
-  }), [liveData, liveApplied, gapSeries, onSaleNames]);
+  }), [liveData, liveApplied, gapSeries, gapPartial, onSaleNames]);
 
   const current = liveDATA.find(s => s.name === currentName) || liveDATA[0];
 
