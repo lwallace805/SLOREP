@@ -24,10 +24,15 @@ import { getEvents, findEvent } from '@/lib/spektrix';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
+// Order queries are the heaviest call in the app — moving live pacing onto the
+// availability endpoint was done precisely to avoid them. Give this route room
+// rather than letting the platform default cut a scan short.
+export const maxDuration = 60;
 
-// Per-request ceiling. Spektrix occasionally hangs; better a partial answer
-// flagged as partial than a function that times out and returns nothing.
-const REQUEST_TIMEOUT_MS = 8000;
+// A generous ceiling, not a tight one. The first version aborted at 8s, which
+// killed every month batch at once and returned ordersSeen: 0 — orders are slow
+// enough that ticket-mix, the caller known to work, sets no timeout at all.
+const REQUEST_TIMEOUT_MS = 25000;
 // 200 orders/page. Six pages covers ~1200 orders in a month, comfortably above
 // this theatre's volume, and bounds the worst case.
 const MAX_PAGES_PER_MONTH = 6;
@@ -71,17 +76,20 @@ function monthRanges(from, to) {
   return out;
 }
 
+/** Returns { orders } on success, or { error } describing why it failed. */
 async function fetchOrders(url) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     const res = await fetch(url, { headers: spektrixSign('GET', url), signal: controller.signal });
-    if (!res.ok) return null;
-    if (!(res.headers.get('content-type') || '').includes('json')) return null;
+    if (!res.ok) return { error: `http ${res.status}` };
+    const type = res.headers.get('content-type') || '';
+    if (!type.includes('json')) return { error: `content-type ${type || 'none'}` };
     const body = await res.json();
-    return Array.isArray(body) ? body : null;
-  } catch {
-    return null;   // aborted, network error, malformed body
+    if (!Array.isArray(body)) return { error: 'body not an array' };
+    return { orders: body };
+  } catch (err) {
+    return { error: err?.name === 'AbortError' ? `timeout after ${REQUEST_TIMEOUT_MS}ms` : `fetch: ${err?.message || 'unknown'}` };
   } finally {
     clearTimeout(timer);
   }
@@ -101,12 +109,13 @@ async function scanOrders(eventId, scanFrom, scanTo) {
   // never match this event id.
   let ordersSeen = 0;
   let ticketsSeen = 0;
+  let lastError = null;
 
   await Promise.all(monthRanges(scanFrom, scanTo).map(async ({ from, to }) => {
     for (let page = 1; page <= MAX_PAGES_PER_MONTH; page++) {
       const url = `${base}/orders?DateFrom=${from}&DateTo=${to}&page=${page}&pageSize=200`;
-      const orders = await fetchOrders(url);
-      if (!orders) { complete = false; return; }
+      const { orders, error } = await fetchOrders(url);
+      if (error) { complete = false; lastError = lastError || `${from}..${to} p${page}: ${error}`; return; }
       if (!orders.length) return;
 
       ordersSeen += orders.length;
@@ -125,7 +134,7 @@ async function scanOrders(eventId, scanFrom, scanTo) {
     }
   }));
 
-  return { byDay, complete, ordersSeen, ticketsSeen };
+  return { byDay, complete, ordersSeen, ticketsSeen, lastError };
 }
 
 // Past order counts do not change, so this is worth caching hard. The route
@@ -134,10 +143,32 @@ async function scanOrders(eventId, scanFrom, scanTo) {
 // against `force-dynamic`, so every page load rescanned the whole gap.
 const cachedScan = (eventId, scanFrom, scanTo) =>
   unstable_cache(
-    () => scanOrders(eventId, scanFrom, scanTo),
+    async () => {
+      const result = await scanOrders(eventId, scanFrom, scanTo);
+      // Caching a failure pins it for four hours and makes a transient fault
+      // look permanent — which is exactly what happened with the 8s timeout.
+      // Throw so nothing is stored, and hand the partial back for diagnostics.
+      if (!result.complete) {
+        const err = new Error(result.lastError || 'scan incomplete');
+        err.partial = result;
+        throw err;
+      }
+      return result;
+    },
     ['history-fill', eventId, scanFrom, scanTo],
     { revalidate: 14400, tags: ['history-fill'] },
   )();
+
+async function scanWithCache(eventId, scanFrom, scanTo) {
+  try {
+    return await cachedScan(eventId, scanFrom, scanTo);
+  } catch (err) {
+    return err.partial || {
+      byDay: {}, complete: false, ordersSeen: 0, ticketsSeen: 0,
+      lastError: err?.message || 'scan failed',
+    };
+  }
+}
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -161,7 +192,7 @@ export async function GET(request) {
     const scanTo = today < maxScanEnd ? today : maxScanEnd;
     const truncated = scanTo < today;
 
-    const { byDay, complete, ordersSeen, ticketsSeen } = await cachedScan(event.id, scanFrom, scanTo);
+    const { byDay, complete, ordersSeen, ticketsSeen, lastError } = await scanWithCache(event.id, scanFrom, scanTo);
 
     const series = [];
     let cumulative = baselineCount;
@@ -186,7 +217,7 @@ export async function GET(request) {
     const found = cumulative - baselineCount;
     return NextResponse.json({
       series, total: cumulative, scanFrom, scanTo, truncated, complete, found,
-      eventId: event.id, eventName: event.name, ordersSeen, ticketsSeen,
+      eventId: event.id, eventName: event.name, ordersSeen, ticketsSeen, lastError,
     });
   } catch (err) {
     console.error('history-fill error:', err.message);
