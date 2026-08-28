@@ -24,18 +24,21 @@ export function daysBetween(a, b) {
   return Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000);
 }
 
-/** Split [from, to] into whole-month windows, clipped to the range ends. */
-export function monthRanges(from, to) {
+// Orders are filtered server-side and the cost scales with how many fall in the
+// window: a whole month exceeded a 12s request ceiling, while four days answered
+// comfortably. A week keeps each window under one 200-order page at this
+// theatre's volume, and the windows all run in parallel anyway.
+export const WINDOW_DAYS = 7;
+
+/** Split [from, to] into consecutive windows of at most `days` days. */
+export function dateWindows(from, to, days = WINDOW_DAYS) {
   if (to < from) return [];
   const out = [];
-  let [y, m] = from.split('-').map(Number);
-  for (let guard = 0; guard < 24; guard++) {
-    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
-    const mFrom = `${y}-${String(m).padStart(2, '0')}-01`;
-    const mTo = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-    out.push({ from: mFrom < from ? from : mFrom, to: mTo > to ? to : mTo });
-    if (mTo >= to) break;
-    m++; if (m > 12) { m = 1; y++; }
+  let cur = from;
+  for (let guard = 0; guard < 64 && cur <= to; guard++) {
+    const end = addDays(cur, days - 1);
+    out.push({ from: cur, to: end > to ? to : end });
+    cur = addDays(end, 1);
   }
   return out;
 }
@@ -52,8 +55,22 @@ export function countTicketsForEvent(order, eventId) {
   return n;
 }
 
+/**
+ * The day an order was placed.
+ *
+ * Spektrix names this firstTransactionDate. The original code looked for
+ * createdAt / purchasedAt / date, none of which exist on an order, so this
+ * returned '' for every order and the date-window guard skipped all of them
+ * before matching ever ran — which is why 254 tickets carrying the right event
+ * id still produced matchedTickets: 0. The local field is preferred over the
+ * Utc one so days bucket against the theatre's calendar rather than sliding at
+ * 5pm Pacific.
+ */
 export function orderDateOf(order) {
-  const raw = order?.createdAt || order?.purchasedAt || order?.date || '';
+  const raw = order?.firstTransactionDate
+    || order?.firstTransactionDateUtc
+    || order?.lastTransactionDate
+    || order?.createdAt || order?.purchasedAt || order?.date || '';
   return typeof raw === 'string' ? raw.slice(0, 10) : '';
 }
 
@@ -71,7 +88,7 @@ export async function scanOrders({
   eventId, scanFrom, scanTo, base, fetchPage,
   maxPages = MAX_PAGES_PER_MONTH, deadline = null,
 }) {
-  const months = monthRanges(scanFrom, scanTo);
+  const months = dateWindows(scanFrom, scanTo);
   const byDay = {};
   let complete = true;
   let ordersSeen = 0;
