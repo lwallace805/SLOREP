@@ -72,24 +72,31 @@ async function runScan(eventId, scanFrom, scanTo) {
 // A failed one is not: caching it pins a transient fault for four hours and
 // makes it look permanent. Throw so nothing is stored, and hand the partial
 // back for diagnostics.
+// Fifteen minutes, for a complete scan and a partial one alike.
+//
+// Refusing to cache a partial result was meant to stop a transient failure being
+// pinned for four hours. In practice the scan is nearly always marginally
+// incomplete — one busy window hits its page ceiling — so nothing was ever
+// cached and every page load re-ran a 20-40s scan with the curve sitting flat
+// until it finished. That is what made the pacing curve look correct once and
+// then wrong again on the next load.
+//
+// A short window is also better for freshness than the old four hours: the last
+// few days of the curve move as tickets sell, and they now refresh on roughly
+// the same cadence as the live figures.
+const SCAN_TTL_SECONDS = 900;
+
 async function scanWithCache(eventId, scanFrom, scanTo) {
   try {
     return await unstable_cache(
-      async () => {
-        const result = await runScan(eventId, scanFrom, scanTo);
-        if (!result.complete) {
-          const err = new Error(result.lastError || 'scan incomplete');
-          err.partial = result;
-          throw err;
-        }
-        return result;
-      },
+      () => runScan(eventId, scanFrom, scanTo),
       ['history-fill', eventId, scanFrom, scanTo],
-      { revalidate: 14400, tags: ['history-fill'] },
+      { revalidate: SCAN_TTL_SECONDS, tags: ['history-fill'] },
     )();
   } catch (err) {
-    return err.partial || {
-      byDay: {}, complete: false, ordersSeen: 0, ticketsSeen: 0, matchedTickets: 0,
+    return {
+      byDay: {}, complete: false, ordersSeen: 0, uniqueOrders: 0,
+      ticketsSeen: 0, matchedTickets: 0,
       lastError: err?.message || 'scan failed',
     };
   }
