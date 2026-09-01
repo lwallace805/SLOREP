@@ -128,6 +128,11 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
   // Per show: true when the order scan behind the gap fill came back short, so
   // the stretch between the export and today is understated rather than measured.
   const [gapPartial, setGapPartial] = useState({});
+  // Comps off by default here, unlike the sales views. The peer series this
+  // curve is measured against are net paid, and the projection calibration was
+  // fitted on that basis, so net paid is the comparable figure. Turning comps on
+  // answers the occupancy question instead.
+  const [withComps, setWithComps] = useState(false);
   const [liveUpdatedAt, setLiveUpdatedAt] = useState(
     Object.keys(initialLiveData).length ? new Date() : null
   );
@@ -196,6 +201,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     const note = (meta) => {
       if (!cancelled) setGapPartial(prev => ({ ...prev, [show.name]: meta }));
     };
+    params.set('comps', withComps ? '1' : '0');
     fetch(`/api/history-fill?${params}`)
       .then(async (r) => {
         let data = null;
@@ -219,15 +225,37 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
           lastError: data.lastError || null,
           ordersSeen: data.ordersSeen ?? null,
           matchedTickets: data.matchedTickets ?? null,
+          compTickets: data.compTickets ?? 0,
         });
       })
       .catch((err) => note({ complete: false, found: 0, ordersSeen: null, lastError: `request failed: ${err?.message || 'unknown'}` }));
     return () => { cancelled = true; };
-  }, [currentName, selectedIsLive, today]);
+  }, [currentName, selectedIsLive, today, withComps]);
+
+  /**
+   * Seat availability counts a comped seat like any other, so the live reading
+   * always includes comps. In net paid mode take them back out again, using the
+   * comp count the gap scan measured for that show.
+   *
+   * Only comps issued since the last export are known, so a show comped heavily
+   * before then reads slightly high. The figure is exact across the window the
+   * scan covers, which for a show still on sale is most of its selling life.
+   */
+  const liveAdjusted = useMemo(() => {
+    if (withComps) return liveData;
+    const out = {};
+    for (const [name, live] of Object.entries(liveData || {})) {
+      const comps = gapPartial[name]?.compTickets ?? 0;
+      out[name] = (comps > 0 && live?.c > 0)
+        ? { ...live, c: Math.max(0, live.c - comps), compsRemoved: comps }
+        : live;
+    }
+    return out;
+  }, [liveData, gapPartial, withComps]);
 
   const getLiveSeries = (show) => {
     if (!onSale(show)) return show.series;
-    const live = liveData[show.name];
+    const live = liveAdjusted[show.name];
     const gap  = gapSeries[show.name]; // [{d,c}] from history-fill
     const meta = gapPartial[show.name];
     const realCap = (live?.cap > 0 ? live.cap : show.cap);
@@ -275,11 +303,11 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     const applied = {};
     DATA.forEach(show => {
       if (!onSale(show)) return;
-      const live = liveData[show.name];
+      const live = liveAdjusted[show.name];
       if (live && live.c > 0) applied[show.name] = true;
     });
     return applied;
-  }, [liveData]);
+  }, [liveAdjusted]);
 
   const liveDATA = useMemo(() => DATA.map(show => {
     const series = getLiveSeries(show);
@@ -288,7 +316,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     // frozen on 2026-06-01. Use the live count instead, and fall back to the
     // last point of the series rather than that stale number.
     const soldSoFar = Math.max(
-      liveApplied[show.name] ? liveData[show.name].c : 0,
+      liveApplied[show.name] ? liveAdjusted[show.name].c : 0,
       series[series.length - 1]?.c ?? 0
     );
     return {
@@ -296,16 +324,16 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
       series,
       final: onSale(show) ? soldSoFar : show.final,
       // Use real cap from Spektrix when available (excludes cancelled performances)
-      cap: (liveApplied[show.name] && liveData[show.name]?.cap > 0)
-        ? liveData[show.name].cap
+      cap: (liveApplied[show.name] && liveAdjusted[show.name]?.cap > 0)
+        ? liveAdjusted[show.name].cap
         : show.cap,
       // The most this run can still finish at, given performances already played.
-      ceiling: (liveApplied[show.name] && liveData[show.name]?.ceiling > 0)
-        ? liveData[show.name].ceiling
+      ceiling: (liveApplied[show.name] && liveAdjusted[show.name]?.ceiling > 0)
+        ? liveAdjusted[show.name].ceiling
         : null,
-      playedCap: liveApplied[show.name] ? (liveData[show.name]?.playedCap ?? 0) : 0,
+      playedCap: liveApplied[show.name] ? (liveAdjusted[show.name]?.playedCap ?? 0) : 0,
     };
-  }), [liveData, liveApplied, gapSeries, gapPartial, onSaleNames]);
+  }), [liveAdjusted, liveApplied, gapSeries, gapPartial, onSaleNames]);
 
   const current = liveDATA.find(s => s.name === currentName) || liveDATA[0];
 
@@ -322,7 +350,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     const meta = gapPartial[current.name];
     const staticShow = DATA.find(x => x.name === current.name);
     const lastStatic = staticShow?.series?.[staticShow.series.length - 1];
-    const liveNow = liveData[current.name]?.c;
+    const liveNow = liveAdjusted[current.name]?.c;
     if (!lastStatic || !liveNow) return false;
     const unexplained = liveNow - lastStatic.c;
     if (unexplained < 20) return false;               // nothing meaningful to explain
@@ -330,7 +358,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     // Warn while any window is missing or the fill is materially short, even
     // though a substantially complete gap is still drawn.
     return !meta.complete || meta.found < unexplained * 0.9;
-  }, [current, gapPartial, liveData]);
+  }, [current, gapPartial, liveAdjusted]);
 
   const [peerCats, setPeerCats] = useState(new Set([current.cat]));
   const [peerSeasons, setPeerSeasons] = useState(new Set(["22-23", "23-24", "24-25", "25-26", "26-27"]));
@@ -648,6 +676,13 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
               <input type="checkbox" checked={excludeInProgress} onChange={e => setExcludeInProgress(e.target.checked)} />
               exclude shows still on sale
             </label>
+            <label
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "#7a7570", cursor: "pointer", marginLeft: 14 }}
+              title="Seat availability counts a comped seat like any other. Net paid is the figure comparable to the peer curves, which exclude comps; counting them answers how full the house is."
+            >
+              <input type="checkbox" checked={withComps} onChange={e => setWithComps(e.target.checked)} />
+              count comps
+            </label>
           </div>
           <div style={{ padding: "8px 16px", fontSize: 12, color: "#7a7570" }}>
             <span style={{ fontWeight: 600, color: "#1c1a18" }}>{peers.length}</span> peer show{peers.length === 1 ? "" : "s"} in selection
@@ -963,6 +998,10 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                 <div style={{ display: "flex", flexDirection: "column", gap: 7, fontSize: 12 }}>
                   {[
                     ["Sell-through (80% CI)", `${projRangeBar.floorPct.toFixed(0)}\u2013${projRangeBar.ceilPct.toFixed(0)}%`],
+                    ["Counting", withComps ? "all seats, comps included" : "net paid seats"],
+                    ...(!withComps && liveAdjusted[current.name]?.compsRemoved > 0
+                      ? [["Comps netted out", `\u2212${liveAdjusted[current.name].compsRemoved.toLocaleString()}`]]
+                      : []),
                     ["Max reachable", `${(headline.reachable / current.cap * 100).toFixed(0)}%`],
                     ...(headline.capLostToPlayedHouses > 0 ? [
                       ["Empty seats already played", `\u2212${headline.capLostToPlayedHouses.toLocaleString()}`],
@@ -1001,7 +1040,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                     // that has run since then its last point is not its total.
                     // Prefer the live Spektrix reading wherever we have one.
                     const lastPt = s.series[s.series.length - 1];
-                    const live = liveData[s.name];
+                    const live = liveAdjusted[s.name];
                     const soldNow = (live?.c > 0) ? live.c : (lastPt?.c ?? 0);
                     const capNow = (live?.cap > 0) ? live.cap : s.cap;
                     const pct = capNow ? (soldNow / capNow * 100) : 0;

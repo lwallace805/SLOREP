@@ -180,7 +180,10 @@ export async function scanOrders({
         if (!id) continue;
         const perDay = byEventDay[id] || (byEventDay[id] = {});
         perDay[date] = (perDay[date] || 0) + 1;
-        if (!paid) compTickets++;
+        // Only comps for the show being asked about. Counting every show's
+        // comps here made the figure meaningless the moment a scan was scoped
+        // to one production.
+        if (!paid && (!eventId || id === eventId)) compTickets++;
         if (!eventId) { matchedTickets++; continue; }
         if (id !== eventId) continue;
         byDay[date] = (byDay[date] || 0) + 1;
