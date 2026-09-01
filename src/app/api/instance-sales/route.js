@@ -56,11 +56,25 @@ async function fetchPage(url) {
   }
 }
 
-const cachedScan = (eventId, scanFrom, scanTo, includeComps) =>
+/**
+ * Seat counts and the order scan in one cached snapshot.
+ *
+ * These were fetched together but cached apart: availability ran live while the
+ * scan was held for fifteen minutes, so a row showed a Fill percentage from this
+ * second beside daily cells from up to a quarter of an hour ago. A sale landing
+ * now moved the percentage immediately and appeared in no column, which reads
+ * exactly like a missing sale. Taking both in one snapshot means a row always
+ * describes a single moment, and asOf says which.
+ */
+const cachedSnapshot = (eventId, scanFrom, scanTo, includeComps) =>
   unstable_cache(
-    () => {
+    async () => {
       const base = `https://system.spektrix.com/${process.env.SPEKTRIX_CLIENT_NAME}/api/v3`;
-      return scanOrders({ eventId, scanFrom, scanTo, base, fetchPage, includeComps, deadline: Date.now() + SCAN_BUDGET_MS });
+      const [instances, scan] = await Promise.all([
+        getInstanceAvailability(eventId),
+        scanOrders({ eventId, scanFrom, scanTo, base, fetchPage, includeComps, deadline: Date.now() + SCAN_BUDGET_MS }),
+      ]);
+      return { instances, scan, asOf: new Date().toISOString() };
     },
     ['instance-sales', eventId, scanFrom, scanTo, includeComps ? 'comps' : 'paid'],
     { revalidate: CACHE_TTL_SECONDS, tags: ['instance-sales'] },
@@ -91,10 +105,7 @@ export async function GET(request) {
 
     const today = pacificToday();
     const scanFrom = addDays(today, -(days - 1));
-    const [instances, scan] = await Promise.all([
-      getInstanceAvailability(event.id),
-      cachedScan(event.id, scanFrom, today, includeComps),
-    ]);
+    const { instances, scan, asOf } = await cachedSnapshot(event.id, scanFrom, today, includeComps);
 
     const dates = dateRange(scanFrom, today);
     const byInstance = scan.byInstanceDay || {};
@@ -122,7 +133,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       showName: event.name, eventId: event.id, days, dates, performances,
-      includeComps, compTickets: scan.compTickets ?? 0,
+      includeComps, compTickets: scan.compTickets ?? 0, asOf,
       dailyTotals: dates.map(d => scan.byDay?.[d] || 0),
       totalInWindow, placed, unplaced: Math.max(0, totalInWindow - placed),
       complete: scan.complete, lastError: scan.lastError,

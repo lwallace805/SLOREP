@@ -114,6 +114,14 @@ export default function InstanceSales({ showName }) {
             {withComps
               ? 'Every seat, comps included — matching the fill column.'
               : 'Net paid seats only; the fill column still counts comps.'}
+            {data?.asOf && (
+              <>
+                {' '}Counts and fill are one snapshot, taken{' '}
+                <span title={new Date(data.asOf).toLocaleString()}>
+                  {new Date(data.asOf).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                </span>.
+              </>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
