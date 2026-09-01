@@ -290,6 +290,17 @@ section('comps');
   eq(withComps.byDay, { '2026-06-10': 3 }, 'with comps included every seat counts');
   eq(withComps.byInstanceDay, { I1: { '2026-06-10': 3 } }, 'and lands on the right performance');
   eq(withComps.compTickets, 2, 'comps are reported separately so a view can say how many');
+
+  // Comps belonging to other shows must not inflate this show's figure.
+  const mixedShows = [{ id: 'C2', firstTransactionDate: '2026-06-10T10:00:00', tickets: [
+    { event: { id: EVENT }, instance: { id: 'I1' }, originalPrice: 0 },
+    { event: { id: 'OTHER' }, instance: { id: 'I9' }, originalPrice: 0 },
+    { event: { id: 'OTHER' }, instance: { id: 'I9' }, originalPrice: 0 },
+  ] }];
+  const scoped = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: mockApi(mixedShows).fetchPage, includeComps: true });
+  eq(scoped.compTickets, 1, "only the targeted show's comps are counted");
+  const unscoped = await scanOrders({ eventId: null, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: mockApi(mixedShows).fetchPage, includeComps: true });
+  eq(unscoped.compTickets, 3, 'with no show targeted every comp counts');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
