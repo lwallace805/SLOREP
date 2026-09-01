@@ -116,6 +116,11 @@ export async function scanOrders({
 }) {
   const months = dateWindows(scanFrom, scanTo);
   const byDay = {};
+  // Paid tickets per event per day. The orders fetch is the expensive part and
+  // returns every event's tickets regardless, so bucketing them all costs
+  // nothing beyond the filtering already being done. Pass no eventId to use the
+  // scan purely for this.
+  const byEventDay = {};
   let complete = true;
   let ordersSeen = 0;
   let ticketsSeen = 0;
@@ -160,8 +165,15 @@ export async function scanOrders({
       }
       const date = orderDateOf(order);
       if (!date || date < scanFrom || date > scanTo) continue;
-      const n = countTicketsForEvent(order, eventId);
-      if (n) { byDay[date] = (byDay[date] || 0) + n; matchedTickets += n; }
+      for (const t of tix) {
+        if (!isPaidTicket(t)) continue;
+        const id = typeof t?.event === 'string' ? t.event : t?.event?.id;
+        if (!id) continue;
+        const perDay = byEventDay[id] || (byEventDay[id] = {});
+        perDay[date] = (perDay[date] || 0) + 1;
+        if (!eventId) { matchedTickets++; continue; }
+        if (id === eventId) { byDay[date] = (byDay[date] || 0) + 1; matchedTickets++; }
+      }
     }
   }
 
@@ -194,7 +206,7 @@ export async function scanOrders({
     }
   }
 
-  return { byDay, complete, ordersSeen, ticketsSeen, matchedTickets, lastError, shape, uniqueOrders: seenOrders.size };
+  return { byDay, byEventDay, complete, ordersSeen, ticketsSeen, matchedTickets, lastError, shape, uniqueOrders: seenOrders.size };
 }
 
 /**
