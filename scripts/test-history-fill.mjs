@@ -245,5 +245,35 @@ section('bucketing every event in one pass');
   eq(r.byEventDay.OTHER, { '2026-06-10': 5 }, 'other shows are bucketed too');
 }
 
+section('sales attributed to the performance bought');
+{
+  const orders = [
+    { id: 'A', firstTransactionDate: '2026-06-10T10:00:00', tickets: [
+      { event: { id: EVENT }, instance: { id: 'I-THU' }, originalPrice: 45 },
+      { event: { id: EVENT }, instance: { id: 'I-THU' }, originalPrice: 45 },
+      { event: { id: EVENT }, instance: { id: 'I-FRI' }, originalPrice: 45 },
+      { event: { id: EVENT }, instance: { id: 'I-FRI' }, originalPrice: 0 },
+      { event: { id: 'OTHER' }, instance: { id: 'X' }, originalPrice: 45 },
+    ] },
+    { id: 'B', firstTransactionDate: '2026-06-11T10:00:00', tickets: [
+      { event: { id: EVENT }, instance: 'I-THU', originalPrice: 45 },
+    ] },
+  ];
+  const api = mockApi(orders);
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: api.fetchPage });
+  eq(r.byInstanceDay, {
+    'I-THU': { '2026-06-10': 2, '2026-06-11': 1 },
+    'I-FRI': { '2026-06-10': 1 },
+  }, 'each sale lands on the performance it was bought for, comps excluded, string ids accepted');
+  eq(r.byDay, { '2026-06-10': 3, '2026-06-11': 1 }, 'the day totals still agree with the per-performance split');
+}
+{
+  // Without an eventId the per-instance map stays empty rather than ballooning
+  // across the whole season.
+  const api = mockApi([order('2026-06-10', 2)]);
+  const r = await scanOrders({ eventId: null, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: api.fetchPage });
+  eq(r.byInstanceDay, {}, 'no per-performance split when no show is targeted');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -121,6 +121,11 @@ export async function scanOrders({
   // nothing beyond the filtering already being done. Pass no eventId to use the
   // scan purely for this.
   const byEventDay = {};
+  // For the targeted show only: which performance each ticket was bought for,
+  // by the day it was bought. Answers "today we sold three tickets to next
+  // Thursday" — order date against performance, rather than either alone.
+  // Only populated when an eventId is given, to bound the size.
+  const byInstanceDay = {};
   let complete = true;
   let ordersSeen = 0;
   let ticketsSeen = 0;
@@ -172,7 +177,14 @@ export async function scanOrders({
         const perDay = byEventDay[id] || (byEventDay[id] = {});
         perDay[date] = (perDay[date] || 0) + 1;
         if (!eventId) { matchedTickets++; continue; }
-        if (id === eventId) { byDay[date] = (byDay[date] || 0) + 1; matchedTickets++; }
+        if (id !== eventId) continue;
+        byDay[date] = (byDay[date] || 0) + 1;
+        matchedTickets++;
+        const iid = typeof t?.instance === 'string' ? t.instance : t?.instance?.id;
+        if (iid) {
+          const perInstance = byInstanceDay[iid] || (byInstanceDay[iid] = {});
+          perInstance[date] = (perInstance[date] || 0) + 1;
+        }
       }
     }
   }
@@ -206,7 +218,7 @@ export async function scanOrders({
     }
   }
 
-  return { byDay, byEventDay, complete, ordersSeen, ticketsSeen, matchedTickets, lastError, shape, uniqueOrders: seenOrders.size };
+  return { byDay, byEventDay, byInstanceDay, complete, ordersSeen, ticketsSeen, matchedTickets, lastError, shape, uniqueOrders: seenOrders.size };
 }
 
 /**
