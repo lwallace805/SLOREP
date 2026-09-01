@@ -56,13 +56,14 @@ export default function InstanceSales({ showName }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showPast, setShowPast] = useState(false);
+  const [withComps, setWithComps] = useState(true);
 
   useEffect(() => {
     if (!showName) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(`/api/instance-sales?name=${encodeURIComponent(showName)}&days=${days}`)
+    fetch(`/api/instance-sales?name=${encodeURIComponent(showName)}&days=${days}&comps=${withComps ? 1 : 0}`)
       .then(async (r) => {
         const body = await r.json().catch(() => null);
         if (cancelled) return;
@@ -76,7 +77,7 @@ export default function InstanceSales({ showName }) {
       .catch(e => { if (!cancelled) setError(e?.message || 'request failed'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [showName, days]);
+  }, [showName, days, withComps]);
 
   const rows = useMemo(() => {
     if (!data?.performances) return [];
@@ -109,11 +110,21 @@ export default function InstanceSales({ showName }) {
             {showName}
           </div>
           <div style={{ fontSize: 12, color: '#7a7570', marginTop: 3 }}>
-            Which performance each sale was for, by the day it sold. Net paid tickets.
+            Which performance each sale was for, by the day it sold.{' '}
+            {withComps
+              ? 'Every seat, comps included — matching the fill column.'
+              : 'Net paid seats only; the fill column still counts comps.'}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           {RANGES.map(d => <button key={d} onClick={() => setDays(d)} style={tab(d === days)}>{d}d</button>)}
+          <button
+            onClick={() => setWithComps(v => !v)}
+            style={{ ...tab(withComps), marginLeft: 6 }}
+            title="A comped seat is occupied but unpaid. Counting it matches the fill percentage; excluding it matches the pacing curve."
+          >
+            comps
+          </button>
         </div>
       </div>
 
@@ -237,6 +248,9 @@ export default function InstanceSales({ showName }) {
               <button onClick={() => setShowPast(v => !v)} style={{ ...tab(false), fontSize: 11 }}>
                 {showPast ? 'Hide' : 'Show'} {hiddenPast} played performance{hiddenPast === 1 ? '' : 's'} with no sales
               </button>
+            )}
+            {withComps && data.compTickets > 0 && (
+              <span>{data.compTickets} of {data.totalInWindow} {data.compTickets === 1 ? 'seat is a comp' : 'seats are comps'}</span>
             )}
             {data.unplaced > 0 && (
               <span>{data.unplaced} ticket{data.unplaced === 1 ? '' : 's'} could not be matched to a performance</span>

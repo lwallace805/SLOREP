@@ -56,16 +56,16 @@ async function fetchPage(url) {
   }
 }
 
-async function runScan(scanFrom, scanTo) {
+async function runScan(scanFrom, scanTo, includeComps) {
   const base = `https://system.spektrix.com/${process.env.SPEKTRIX_CLIENT_NAME}/api/v3`;
   // No eventId: bucket every show rather than filtering to one.
-  return scanOrders({ eventId: null, scanFrom, scanTo, base, fetchPage, deadline: Date.now() + SCAN_BUDGET_MS });
+  return scanOrders({ eventId: null, scanFrom, scanTo, base, fetchPage, includeComps, deadline: Date.now() + SCAN_BUDGET_MS });
 }
 
-const cachedScan = (scanFrom, scanTo) =>
+const cachedScan = (scanFrom, scanTo, includeComps) =>
   unstable_cache(
-    () => runScan(scanFrom, scanTo),
-    ['sales-activity', scanFrom, scanTo],
+    () => runScan(scanFrom, scanTo, includeComps),
+    ['sales-activity', scanFrom, scanTo, includeComps ? 'comps' : 'paid'],
     { revalidate: CACHE_TTL_SECONDS, tags: ['sales-activity'] },
   )();
 
@@ -80,11 +80,14 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const requested = parseInt(searchParams.get('days') || '30', 10);
   const days = ALLOWED_DAYS.includes(requested) ? requested : 30;
+  // Comps counted by default, matching the seat-availability figures the rest
+  // of the dashboard reports.
+  const includeComps = searchParams.get('comps') !== '0';
 
   try {
     const today = pacificToday();
     const scanFrom = addDays(today, -(days - 1));
-    const [events, scan] = await Promise.all([getEvents(), cachedScan(scanFrom, today)]);
+    const [events, scan] = await Promise.all([getEvents(), cachedScan(scanFrom, today, includeComps)]);
 
     const nameById = new Map();
     for (const e of events || []) if (e?.id && e?.name) nameById.set(e.id, e.name);
@@ -112,7 +115,7 @@ export async function GET(request) {
       .sort((a, b) => b.last7 - a.last7 || b.total - a.total);
 
     return NextResponse.json({
-      days, dates, shows,
+      days, dates, shows, includeComps, compTickets: scan.compTickets ?? 0,
       scanFrom, scanTo: today,
       complete: scan.complete,
       lastError: scan.lastError,

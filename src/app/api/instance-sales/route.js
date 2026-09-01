@@ -56,13 +56,13 @@ async function fetchPage(url) {
   }
 }
 
-const cachedScan = (eventId, scanFrom, scanTo) =>
+const cachedScan = (eventId, scanFrom, scanTo, includeComps) =>
   unstable_cache(
     () => {
       const base = `https://system.spektrix.com/${process.env.SPEKTRIX_CLIENT_NAME}/api/v3`;
-      return scanOrders({ eventId, scanFrom, scanTo, base, fetchPage, deadline: Date.now() + SCAN_BUDGET_MS });
+      return scanOrders({ eventId, scanFrom, scanTo, base, fetchPage, includeComps, deadline: Date.now() + SCAN_BUDGET_MS });
     },
-    ['instance-sales', eventId, scanFrom, scanTo],
+    ['instance-sales', eventId, scanFrom, scanTo, includeComps ? 'comps' : 'paid'],
     { revalidate: CACHE_TTL_SECONDS, tags: ['instance-sales'] },
   )();
 
@@ -77,6 +77,10 @@ export async function GET(request) {
   const showName = searchParams.get('name');
   const requested = parseInt(searchParams.get('days') || '14', 10);
   const days = ALLOWED_DAYS.includes(requested) ? requested : 14;
+  // Comps counted by default. The fill column beside these cells comes from
+  // seat availability, which counts a comped seat like any other, so excluding
+  // them here left the rows unable to reconcile with the percentage next door.
+  const includeComps = searchParams.get('comps') !== '0';
 
   if (!showName) return NextResponse.json({ error: 'name required' }, { status: 400 });
 
@@ -89,7 +93,7 @@ export async function GET(request) {
     const scanFrom = addDays(today, -(days - 1));
     const [instances, scan] = await Promise.all([
       getInstanceAvailability(event.id),
-      cachedScan(event.id, scanFrom, today),
+      cachedScan(event.id, scanFrom, today, includeComps),
     ]);
 
     const dates = dateRange(scanFrom, today);
@@ -118,6 +122,7 @@ export async function GET(request) {
 
     return NextResponse.json({
       showName: event.name, eventId: event.id, days, dates, performances,
+      includeComps, compTickets: scan.compTickets ?? 0,
       dailyTotals: dates.map(d => scan.byDay?.[d] || 0),
       totalInWindow, placed, unplaced: Math.max(0, totalInWindow - placed),
       complete: scan.complete, lastError: scan.lastError,

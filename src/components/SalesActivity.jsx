@@ -60,12 +60,13 @@ export default function SalesActivity() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [withComps, setWithComps] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(`/api/sales-activity?days=${days}`)
+    fetch(`/api/sales-activity?days=${days}&comps=${withComps ? 1 : 0}`)
       .then(async (r) => {
         const body = await r.json().catch(() => null);
         if (cancelled) return;
@@ -79,7 +80,7 @@ export default function SalesActivity() {
       .catch(err => { if (!cancelled) setError(err?.message || 'request failed'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [days]);
+  }, [days, withComps]);
 
   // Top shows keep their own colour; the tail folds into one "Other" band
   // rather than inventing a ninth hue.
@@ -125,13 +126,16 @@ export default function SalesActivity() {
             Where new sales are landing
           </div>
           <div style={{ fontSize: 12, color: '#7a7570', marginTop: 3 }}>
-            Net paid tickets by order date, stacked by show. Comps and $0 subscription lines excluded.
+            Seats by order date, stacked by show.{' '}
+            {withComps ? 'Comps included.' : 'Net paid only — comps and $0 subscription lines excluded.'}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           {RANGES.map(d => (
             <button key={d} onClick={() => setDays(d)} style={tab(d === days)}>{d}d</button>
           ))}
+          <button onClick={() => setWithComps(v => !v)} style={{ ...tab(withComps), marginLeft: 6 }}
+            title="A comped seat is occupied but unpaid.">comps</button>
         </div>
       </div>
 
@@ -158,7 +162,8 @@ export default function SalesActivity() {
           <div style={card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, gap: 12, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 12, color: '#7a7570' }}>
-                <strong style={{ color: '#1c1a18', fontWeight: 600 }}>{windowTotal.toLocaleString()}</strong> tickets over {days} days
+                <strong style={{ color: '#1c1a18', fontWeight: 600 }}>{windowTotal.toLocaleString()}</strong> seats over {days} days
+                {withComps && data.compTickets > 0 && <span>, {data.compTickets.toLocaleString()} of them comps</span>}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 11, color: '#7a7570' }}>
                 {named.map(n => (
