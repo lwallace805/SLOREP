@@ -275,5 +275,22 @@ section('sales attributed to the performance bought');
   eq(r.byInstanceDay, {}, 'no per-performance split when no show is targeted');
 }
 
+section('comps');
+{
+  const orders = [{ id: 'C1', firstTransactionDate: '2026-06-10T10:00:00', tickets: [
+    { event: { id: EVENT }, instance: { id: 'I1' }, originalPrice: 45 },
+    { event: { id: EVENT }, instance: { id: 'I1' }, originalPrice: 0 },
+    { event: { id: EVENT }, instance: { id: 'I1' }, type: { id: [...COMP_TYPE_IDS][0] }, originalPrice: 45 },
+  ] }];
+  const paidOnly = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: mockApi(orders).fetchPage });
+  eq(paidOnly.byDay, { '2026-06-10': 1 }, 'by default only the paid ticket counts');
+  eq(paidOnly.compTickets, 0, 'comps are not counted when excluded');
+
+  const withComps = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: mockApi(orders).fetchPage, includeComps: true });
+  eq(withComps.byDay, { '2026-06-10': 3 }, 'with comps included every seat counts');
+  eq(withComps.byInstanceDay, { I1: { '2026-06-10': 3 } }, 'and lands on the right performance');
+  eq(withComps.compTickets, 2, 'comps are reported separately so a view can say how many');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -112,7 +112,7 @@ export function orderDateOf(order) {
  */
 export async function scanOrders({
   eventId, scanFrom, scanTo, base, fetchPage,
-  maxPages = MAX_PAGES_PER_MONTH, deadline = null,
+  maxPages = MAX_PAGES_PER_MONTH, deadline = null, includeComps = false,
 }) {
   const months = dateWindows(scanFrom, scanTo);
   const byDay = {};
@@ -130,6 +130,9 @@ export async function scanOrders({
   let ordersSeen = 0;
   let ticketsSeen = 0;
   let matchedTickets = 0;
+  // Comps counted, whether or not they are included in the buckets, so a view
+  // can always say how much of a figure is papered rather than sold.
+  let compTickets = 0;
   let lastError = null;
   // Windows are contiguous, but Spektrix matches an order whose transactions
   // touch the range, and an order paid over several weeks touches several
@@ -171,11 +174,13 @@ export async function scanOrders({
       const date = orderDateOf(order);
       if (!date || date < scanFrom || date > scanTo) continue;
       for (const t of tix) {
-        if (!isPaidTicket(t)) continue;
+        const paid = isPaidTicket(t);
+        if (!paid && !includeComps) continue;
         const id = typeof t?.event === 'string' ? t.event : t?.event?.id;
         if (!id) continue;
         const perDay = byEventDay[id] || (byEventDay[id] = {});
         perDay[date] = (perDay[date] || 0) + 1;
+        if (!paid) compTickets++;
         if (!eventId) { matchedTickets++; continue; }
         if (id !== eventId) continue;
         byDay[date] = (byDay[date] || 0) + 1;
@@ -218,7 +223,7 @@ export async function scanOrders({
     }
   }
 
-  return { byDay, byEventDay, byInstanceDay, complete, ordersSeen, ticketsSeen, matchedTickets, lastError, shape, uniqueOrders: seenOrders.size };
+  return { byDay, byEventDay, byInstanceDay, complete, ordersSeen, ticketsSeen, matchedTickets, compTickets, lastError, shape, uniqueOrders: seenOrders.size };
 }
 
 /**
