@@ -1,6 +1,7 @@
 'use client';
 
 import SalesActivity from './SalesActivity';
+import InstanceSales from './InstanceSales';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { currentShowFromEvents, pacificToday } from '@/lib/showStatus';
@@ -314,8 +315,12 @@ export default function InstanceView({ initialData = null }) {
           <div style={{ padding: 40, textAlign: 'center', color: '#7a7570' }}>Select a show above to view performance data.</div>
         )}
 
-        {/* Cross-show demand over time. The view above is one show's inventory
-            instance by instance; this is the whole season day by day. */}
+        {/* Where this show's sales are landing: order date against performance,
+            so a day's movement can be read per house rather than in aggregate. */}
+        <InstanceSales showName={data?.name || selectedName} />
+
+        {/* Cross-show demand over time. The views above are one show; this is
+            the whole season day by day. */}
         <SalesActivity />
 
       </div>
