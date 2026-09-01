@@ -216,5 +216,34 @@ section('duplicate orders across windows');
   eq(r.uniqueOrders, 1, 'one unique order');
 }
 
+section('bucketing every event in one pass');
+{
+  const mixed = [
+    { id: 'O1', firstTransactionDate: '2026-06-10T10:00:00', tickets: [
+      { event: { id: 'EVT1' }, originalPrice: 45 },
+      { event: { id: 'EVT2' }, originalPrice: 45 },
+      { event: { id: 'EVT2' }, originalPrice: 0 },
+    ] },
+    { id: 'O2', firstTransactionDate: '2026-06-11T10:00:00', tickets: [
+      { event: { id: 'EVT2' }, originalPrice: 45 },
+    ] },
+  ];
+  const api = mockApi(mixed);
+  const r = await scanOrders({ eventId: null, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: api.fetchPage });
+  eq(r.byEventDay, { EVT1: { '2026-06-10': 1 }, EVT2: { '2026-06-10': 1, '2026-06-11': 1 } },
+     'every event is bucketed by day, comps excluded');
+  eq(r.matchedTickets, 3, 'with no eventId, all paid tickets count');
+  eq(r.byDay, {}, 'no single-show series when no eventId is given');
+}
+{
+  // With an eventId the single-show series still works, and the all-event
+  // buckets come along for free.
+  const api = mockApi([order('2026-06-10', 2), order('2026-06-10', 5, 'OTHER')]);
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: api.fetchPage });
+  eq(r.byDay, { '2026-06-10': 2 }, 'target show series unchanged');
+  eq(r.matchedTickets, 2, 'matched counts only the target show');
+  eq(r.byEventDay.OTHER, { '2026-06-10': 5 }, 'other shows are bucketed too');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
