@@ -40,6 +40,23 @@ const CATEGORIES = {
  *    day before opening and far too narrow a month out. Measured, the 80%
  *    interval runs 40%-234% of the point estimate at d-30 and 75%-142% at d-1.
  */
+/**
+ * The highest share of capacity a run realistically finishes at.
+ *
+ * Clamping a projection at 100% is not a safety margin — it is the single
+ * largest source of error in the model. Of the 46 completed shows, none
+ * finished above 96% of capacity; the median is 56% and the 90th percentile
+ * 85%. The worst misses in the backtest are all pinned at exactly 100% and
+ * still 27-32pp too high: A Grand Night projected 100% and finished at 68%.
+ *
+ * Backtested leave-one-show-out (scripts/backtest-sellthrough.mjs), moving the
+ * ceiling from capacity to 90% of it cuts mean absolute error from 9.7pp to
+ * 7.8pp at d-1 and from 15.2pp to 12.6pp at d-30. Tighter still is marginally
+ * better on average but would under-call the occasional show that does reach
+ * the nineties.
+ */
+const PRACTICAL_MAX_FILL = 0.90;
+
 const PACE_CENTER = { comedy: 0.905, drama: 0.953, revue: 0.910, ubu: 0.787 };
 // book_musical and holiday have too few completed shows to fit their own.
 const PACE_CENTER_DEFAULT = 0.852;
@@ -282,6 +299,11 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
       cap: (liveApplied[show.name] && liveData[show.name]?.cap > 0)
         ? liveData[show.name].cap
         : show.cap,
+      // The most this run can still finish at, given performances already played.
+      ceiling: (liveApplied[show.name] && liveData[show.name]?.ceiling > 0)
+        ? liveData[show.name].ceiling
+        : null,
+      playedCap: liveApplied[show.name] ? (liveData[show.name]?.playedCap ?? 0) : 0,
     };
   }), [liveData, liveApplied, gapSeries, gapPartial, onSaleNames]);
 
@@ -402,21 +424,35 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     const centre = PACE_CENTER[current.cat] ?? PACE_CENTER_DEFAULT;
     const [bandLo, bandHi] = paceBand(d);
     const cap = current.cap || Infinity;
+    // Once a performance has played its empty seats are unrecoverable, so the
+    // reachable maximum is below capacity for any show already running. Clamp
+    // to that, not to cap — otherwise a half-full opening weekend still reports
+    // a 100% ceiling.
+    // Two ceilings, whichever binds first. The physical one comes from the
+    // performances themselves: seats in a house that has already played cannot
+    // be sold, so a run that opened half full can no longer reach capacity. The
+    // practical one is what runs actually achieve. Neither may fall below what
+    // is already banked.
+    const physicalCeiling = current.ceiling > 0 ? current.ceiling : cap;
+    const reachable = Number.isFinite(cap)
+      ? Math.max(cPt.c, Math.min(physicalCeiling, Math.round(cap * PRACTICAL_MAX_FILL)))
+      : physicalCeiling;
     const calibrated = rawProjection ? rawProjection * centre : null;
-    const projection = calibrated != null ? Math.min(cap, Math.round(calibrated)) : null;
+    const projection = calibrated != null ? Math.min(reachable, Math.round(calibrated)) : null;
     const rawLow = calibrated != null ? Math.round(calibrated * bandLo) : null;
     // A run cannot finish below what is already banked, so the low end stays
     // floored at tickets sold. That clamp is a backstop, not a forecast: when it
     // binds, the card says so rather than passing it off as the model's floor.
-    const projectionLow  = rawLow != null ? Math.min(cap, Math.max(rawLow, cPt.c)) : null;
-    const projectionHigh = calibrated != null ? Math.min(cap, Math.round(calibrated * bandHi)) : null;
+    const projectionLow  = rawLow != null ? Math.min(reachable, Math.max(rawLow, cPt.c)) : null;
+    const projectionHigh = calibrated != null ? Math.min(reachable, Math.round(calibrated * bandHi)) : null;
     const lowIsClamped = rawLow != null && rawLow < cPt.c;
     // Where this show sits against peer pace right now, as a ratio of percent of
     // capacity sold at the same day. 1.00 is exactly on peer pace.
     const paceIndex = (currentCapPctNow !== null && peerMedCapPct) ? currentCapPctNow / peerMedCapPct : null;
     const peerMedFinal = median(closedPeers.map(p => p.final));
     return { d, currentTix: cPt.c, peerMed, delta, projection, projectionLow, projectionHigh, peerMedFinal,
-             peerN: peerVals.length, centre, bandLo, bandHi, paceIndex, lowIsClamped };
+             peerN: peerVals.length, centre, bandLo, bandHi, paceIndex, lowIsClamped,
+             reachable, capLostToPlayedHouses: Math.max(0, cap - reachable) };
   }, [currentToday, peers, closedPeers, current]);
 
   const chartData = useMemo(() => {
@@ -878,7 +914,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
             <strong>Peer median</strong>: across selected peer shows, the median cumulative tickets at the same day from opening. <strong>Peer % of final (median)</strong> shows what fraction of their final total peers had sold by that day; useful as a pacing benchmark.
           </div>
           <div style={{ marginBottom: 6 }}>
-            <strong>Projected final (calibrated)</strong>: tickets sold so far divided by the median fraction-of-final peers had reached on this day — an extrapolation of how far ahead or behind peer pace the show is running — then scaled by a per-category centering factor, since the raw estimate runs about 15% hot. The range is an 80% confidence interval fitted by leave-one-out backtest over the 46 completed shows, and it narrows as opening approaches: roughly 40–234% of the point estimate at d−30, against 75–142% at d−1. Only shown inside d=−30 where the denominator is stable.
+            <strong>Projected final (calibrated)</strong>: tickets sold so far divided by the median fraction-of-final peers had reached on this day — an extrapolation of how far ahead or behind peer pace the show is running — then scaled by a per-category centering factor, since the raw estimate runs about 15% hot. The range is an 80% confidence interval fitted by leave-one-out backtest over the 46 completed shows, and it narrows as opening approaches: roughly 40–234% of the point estimate at d−30, against 75–142% at d−1. Only shown inside d=−30 where the denominator is stable. The ceiling is the lower of what the run can still physically reach — seats in a performance that has already played cannot be sold — and 90% of capacity, which is where completed shows top out: none of the 46 finished above 96%.
           </div>
           <div>
             <strong>Capacity caveat</strong>: a few recent shows show &gt;100% sell-through against capacity, likely due to seat-hold release patterns not yet reconciled with Spektrix. Use % of capacity as a directional metric.
@@ -927,6 +963,10 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                 <div style={{ display: "flex", flexDirection: "column", gap: 7, fontSize: 12 }}>
                   {[
                     ["Sell-through (80% CI)", `${projRangeBar.floorPct.toFixed(0)}\u2013${projRangeBar.ceilPct.toFixed(0)}%`],
+                    ["Max reachable", `${(headline.reachable / current.cap * 100).toFixed(0)}%`],
+                    ...(headline.capLostToPlayedHouses > 0 ? [
+                      ["Empty seats already played", `\u2212${headline.capLostToPlayedHouses.toLocaleString()}`],
+                    ] : []),
                     ["Pace vs peers", headline.paceIndex
                       ? `${headline.paceIndex.toFixed(2)}\u00d7 ${headline.paceIndex >= 1 ? "ahead" : "behind"}`
                       : "\u2014"],

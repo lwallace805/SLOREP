@@ -194,8 +194,23 @@ export async function getLivePacingData(shows) {
       const totalSold = instances.reduce((s, i) => s + i.sold, 0);
       const realCap   = instances.reduce((s, i) => s + i.cap,  0);
 
+      // Seats in a performance that has already played are gone: nobody can buy
+      // into last night. The most a run can still finish at is what is banked
+      // plus what remains in performances still to come — which is below total
+      // capacity for any show that has opened under a full house. Clamping a
+      // projection to capacity instead lets it claim a 100% ceiling that is no
+      // longer reachable.
+      const remaining = instances.reduce(
+        (s, i) => (i.dt.slice(0, 10) >= today ? s + Math.max(0, i.cap - i.sold) : s),
+        0,
+      );
+      const ceiling = totalSold + remaining;
+      const playedCap = instances.reduce(
+        (s, i) => (i.dt.slice(0, 10) < today ? s + i.cap : s), 0,
+      );
+
       const d = Math.round((pacificDateToUtcMs(today) - openUtcMs) / 86400000);
-      result[show.name] = { d, c: totalSold, cap: realCap };
+      result[show.name] = { d, c: totalSold, cap: realCap, ceiling, playedCap };
     } catch {
       // show falls back to static data
     }
