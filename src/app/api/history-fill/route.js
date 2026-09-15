@@ -1,9 +1,15 @@
 /**
- * /api/history-fill?name=<showName>&fromDate=<YYYY-MM-DD>&baselineCount=<N>&openDate=<YYYY-MM-DD>
+ * /api/history-fill?name=<showName>&fromDate=<YYYY-MM-DD>&baselineCount=<N>&openDate=<YYYY-MM-DD>[&comps=0|1]
  *
  * Cumulative ticket counts per day between the last static export point and
  * today, so the pacing curve climbs rather than running flat and then jumping
  * on the day the live availability reading lands.
+ *
+ * comps=1 counts every seat, comps=0 (the default) net paid only, matching the
+ * toggle on the pacing page. The page has sent this since the toggle landed,
+ * but the route never read it: comps=0 and comps=1 answered byte for byte the
+ * same, and the compTickets figure the page nets out of the live reading was
+ * never in the response at all.
  *
  * The maths lives in src/lib/historyFill.js so it can be tested without
  * Spektrix — see scripts/test-history-fill.mjs.
@@ -63,9 +69,9 @@ async function fetchPage(url) {
   }
 }
 
-async function runScan(eventId, scanFrom, scanTo) {
+async function runScan(eventId, scanFrom, scanTo, includeComps) {
   const base = `https://system.spektrix.com/${process.env.SPEKTRIX_CLIENT_NAME}/api/v3`;
-  return scanOrders({ eventId, scanFrom, scanTo, base, fetchPage, deadline: Date.now() + SCAN_BUDGET_MS });
+  return scanOrders({ eventId, scanFrom, scanTo, base, fetchPage, includeComps, deadline: Date.now() + SCAN_BUDGET_MS });
 }
 
 // Past order counts do not change, so a successful scan is worth caching hard.
@@ -86,18 +92,21 @@ async function runScan(eventId, scanFrom, scanTo) {
 // the same cadence as the live figures.
 const SCAN_TTL_SECONDS = 900;
 
-async function scanWithCache(eventId, scanFrom, scanTo) {
+async function scanWithCache(eventId, scanFrom, scanTo, includeComps) {
   try {
     return await unstable_cache(
-      () => runScan(eventId, scanFrom, scanTo),
-      ['history-fill', eventId, scanFrom, scanTo],
+      () => runScan(eventId, scanFrom, scanTo, includeComps),
+      // v2: the scan now pages every window to its end. Keyed on the counting
+      // basis too, so a comps=1 answer is never served to a comps=0 request.
+      ['history-fill', 'v2', eventId, scanFrom, scanTo, includeComps ? 'comps' : 'paid'],
       { revalidate: SCAN_TTL_SECONDS, tags: ['history-fill'] },
     )();
   } catch (err) {
+    const msg = err?.message || 'scan failed';
     return {
       byDay: {}, complete: false, ordersSeen: 0, uniqueOrders: 0,
-      ticketsSeen: 0, matchedTickets: 0,
-      lastError: err?.message || 'scan failed',
+      ticketsSeen: 0, matchedTickets: 0, compTickets: 0,
+      lastError: msg, errors: [msg], incompleteWindows: [], windows: [],
     };
   }
 }
@@ -108,6 +117,8 @@ export async function GET(request) {
   const fromDate      = searchParams.get('fromDate');
   const baselineCount = parseInt(searchParams.get('baselineCount') || '0', 10);
   const openDate      = searchParams.get('openDate');
+  // Net paid by default, as the pacing page's toggle is.
+  const includeComps  = searchParams.get('comps') === '1';
 
   if (!showName || !fromDate || !openDate) {
     return NextResponse.json({ error: 'name, fromDate, openDate required' }, { status: 400 });
@@ -125,7 +136,7 @@ export async function GET(request) {
 
     const today = new Date().toISOString().slice(0, 10);
     const { scanFrom, scanTo, truncated } = scanWindow(fromDate, today);
-    const scan = await scanWithCache(event.id, scanFrom, scanTo);
+    const scan = await scanWithCache(event.id, scanFrom, scanTo, includeComps);
 
     const { series, total } = buildSeries({
       byDay: scan.byDay, baselineCount, openDate, scanFrom, scanTo, today, truncated,
@@ -141,8 +152,14 @@ export async function GET(request) {
       uniqueOrders: scan.uniqueOrders,
       ticketsSeen: scan.ticketsSeen,
       matchedTickets: scan.matchedTickets,
+      includeComps,
+      compTickets: scan.compTickets ?? 0,
       lastError: scan.lastError,
-      ...(searchParams.get('debug') ? { shape: scan.shape } : {}),
+      errors: scan.errors ?? [],
+      // Windows that did not page to their end, with why. Their partial data
+      // is still in the series; the windows that finished are not discarded.
+      incompleteWindows: scan.incompleteWindows ?? [],
+      ...(searchParams.get('debug') ? { shape: scan.shape, windows: scan.windows } : {}),
     });
   } catch (err) {
     console.error('history-fill error:', err.message);

@@ -142,12 +142,64 @@ section('scanOrders — failure modes');
   eq(/2026-07-08/.test(r.lastError || ''), true, 'lastError names the failing window');
 }
 {
-  // Every page full ⇒ pagination runs to the ceiling and must flag itself.
-  const many = Array.from({ length: 400 }, (_, i) => order('2026-06-10', 1));
-  const api = mockApi(many, { forceFullPages: true, pageSize: 200 });
-  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: api.fetchPage, maxPages: 2 });
-  eq(r.complete, false, 'hitting the page ceiling marks the scan incomplete');
-  eq(/ceiling/.test(r.lastError || ''), true, 'lastError names the ceiling');
+  // Every page full, forever ⇒ pagination runs to the hard ceiling and must
+  // flag itself rather than pretend the window finished.
+  const api = { calls: [], fetchPage: async (u) => {
+    api.calls.push(u);
+    return { orders: Array.from({ length: 200 }, () => order('2026-06-10', 1)) };
+  } };
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: api.fetchPage, maxPages: 2, maxPagesPerWindow: 5 });
+  eq(r.complete, false, 'a window still full at the hard ceiling marks the scan incomplete');
+  eq(/still full after 5 pages/.test(r.lastError || ''), true, 'lastError names the hard ceiling');
+  eq(api.calls.length, 5, 'stops at the hard ceiling');
+  eq(r.incompleteWindows, ['2026-06-08..2026-06-11: ceiling'], 'the window is listed as unfinished');
+  eq(r.matchedTickets, 1000, 'everything fetched up to the ceiling still counts');
+}
+{
+  // The deployed failure: a four-day window with more orders than one wave of
+  // pages holds. The scan must keep paging until the window returns a short
+  // page, and only then call itself complete.
+  const many = Array.from({ length: 2100 }, () => order('2026-07-09', 1));
+  const api = mockApi(many);
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-07-08', scanTo: '2026-07-11', base: BASE, fetchPage: api.fetchPage, maxPages: 8 });
+  eq(r.complete, true, 'a window deeper than one wave still completes');
+  eq(r.matchedTickets, 2100, 'no order past page 8 is dropped');
+  eq(r.byDay, { '2026-07-09': 2100 }, 'and they land on their day');
+  const pages = api.calls.map(u => Number(new URL(u).searchParams.get('page'))).sort((a, b) => a - b);
+  // Wave 1 is page 1, then eight pages a wave: 2-9, then 10-17. The short
+  // page is 11; the rest of its wave was already in flight and comes back
+  // empty. That overshoot is the price of fetching a wave in parallel.
+  eq(pages, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], 'pages run past the first wave until a short page arrives');
+  eq(r.incompleteWindows, [], 'nothing left unfinished');
+  eq(r.errors, [], 'no errors');
+  eq(r.windows[0].status, 'done', 'the window reports itself done');
+  eq(r.windows[0].orders, 2100, 'and how many orders it held');
+  eq(r.windows[0].pages, 11, 'pages past the short one are not counted as part of the window');
+}
+{
+  // A fault on a page beyond the window's short page is not the window's fault.
+  const api = { fetchPage: async (u) => {
+    const page = Number(new URL(u).searchParams.get('page'));
+    if (page <= 2) return { orders: Array.from({ length: 200 }, () => order('2026-06-10', 1)) };
+    if (page === 3) return { orders: [order('2026-06-10', 1)] };
+    return { error: 'timeout after 20000ms' };
+  } };
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: api.fetchPage, maxPages: 8 });
+  eq(r.complete, true, 'a timeout on an empty page past the end does not mark the scan incomplete');
+  eq(r.matchedTickets, 401, 'everything up to the short page counts');
+}
+{
+  // Two failures in two windows: both must be reported, and the windows that
+  // finished must keep their data.
+  const api = mockApi([order('2026-06-10', 5), order('2026-07-20', 9)], { failWindowFrom: '2026-07-08' });
+  const inner = api.fetchPage;
+  api.fetchPage = async (u) => (new URL(u).searchParams.get('DateFrom') === '2026-06-14' ? { error: 'http 502' } : inner(u));
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-02', scanTo: '2026-08-28', base: BASE, fetchPage: api.fetchPage });
+  eq(r.complete, false, 'incomplete');
+  eq(r.errors.length, 2, 'every failure is reported, not only the first');
+  eq(r.incompleteWindows, ['2026-06-14..2026-06-17: error', '2026-07-08..2026-07-11: error'], 'each unfinished window is named');
+  eq(r.byDay, { '2026-06-10': 5, '2026-07-20': 9 }, 'the windows that finished still contribute');
+  eq(r.windows.filter(w => w.status === 'done').length, r.windows.length - 2, 'every other window is done');
 }
 
 section('buildSeries');
@@ -184,8 +236,9 @@ section('scanOrders — page waves and deadline');
   const api = mockApi(many, { forceFullPages: true, pageSize: 200 });
   const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: api.fetchPage, maxPages: 4 });
   const pages = api.calls.map(u => Number(new URL(u).searchParams.get('page'))).sort();
-  eq(pages, [1, 2, 3, 4], 'a full first page triggers the remaining pages');
+  eq(pages, [1, 2, 3, 4, 5], 'a full first page triggers the remaining pages, until a short one');
   eq(r.ordersSeen > 0, true, 'orders ingested across waves');
+  eq(r.complete, true, 'a window that ends on a short page is complete');
 }
 {
   // A month whose first page is not full must not fetch any further pages.
@@ -200,6 +253,22 @@ section('scanOrders — page waves and deadline');
   eq(api.calls.length, 0, 'no requests made once the deadline has passed');
   eq(r.complete, false, 'marked incomplete');
   eq(/deadline/.test(r.lastError || ''), true, 'lastError names the deadline');
+  eq(r.errors.length, r.windows.length, 'one deadline note per window, not per page');
+  eq(r.incompleteWindows.every(w => /deadline$/.test(w)), true, 'every window is listed as cut off by the deadline');
+}
+{
+  // The deadline lands mid-scan: what was fetched is kept, the rest is
+  // reported, and the window does not claim pages it never fetched.
+  let n = 0;
+  const start = Date.now();
+  const api = { fetchPage: async () => {
+    n++;
+    return { orders: Array.from({ length: 200 }, () => order('2026-06-10', 1)) };
+  } };
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: api.fetchPage, maxPages: 4, deadline: start - 1 + 1 });
+  eq(r.complete, false, 'marked incomplete');
+  eq(r.matchedTickets, n * 200, 'every page that answered is counted');
+  eq(r.windows[0].pages, n, 'pages abandoned at the deadline are not counted as fetched');
 }
 
 section('duplicate orders across windows');
