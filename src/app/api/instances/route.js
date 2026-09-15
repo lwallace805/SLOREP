@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getEvents, getEventsAround, findEvent, getInstanceAvailability } from '@/lib/spektrix';
+import { getEvents, getEventsAround, findEvent, getInstanceAvailability, getPastInstances } from '@/lib/spektrix';
 
 // Never cache at the CDN level; freshness is managed by the client-side
 // 5-minute refresh interval in PacingDashboard.
@@ -27,8 +27,11 @@ export async function GET(request) {
     }
 
     const instances = await getInstanceAvailability(event.id);
+    // Availability is empty for a run long past; list the performances the
+    // other way so a closed show's capacity can still be established.
+    const past = instances.length ? null : await getPastInstances(event.id);
 
-    return NextResponse.json({ name: event.name, eventId: event.id, instances });
+    return NextResponse.json({ name: event.name, eventId: event.id, instances, ...(past ? { past } : {}) });
   } catch (err) {
     console.error('Spektrix /instances error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
