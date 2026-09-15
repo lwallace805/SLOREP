@@ -168,6 +168,32 @@ export async function getInstanceAvailability(eventId) {
 }
 
 /**
+ * A past event's performances, for when the availability endpoint has nothing
+ * to say about them any more. Returns [{ id, dt, capacity, sold }] with
+ * capacity and sold filled where /instances/{id}/status still answers.
+ */
+export async function getPastInstances(eventId) {
+  let raw;
+  try { raw = await spektrixGet(`/events/${eventId}/instances`); } catch { return { instances: [], note: 'events/{id}/instances failed' }; }
+  const list = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
+  const instances = await Promise.all(list.map(async (inst) => {
+    const id = inst?.id || inst?.eventInstanceId;
+    const dt = inst?.start ? inst.start.slice(0, 16).replace('T', ' ') : '';
+    let status = null;
+    try { status = await spektrixGet(`/instances/${id}/status`); } catch { status = null; }
+    return {
+      id, dt,
+      capacity: status?.capacity ?? inst?.capacity ?? null,
+      available: status?.available ?? null,
+      sold: status?.capacity != null && status?.available != null ? status.capacity - status.available : null,
+      keys: Object.keys(inst || {}).slice(0, 30),
+      statusKeys: status ? Object.keys(status).slice(0, 30) : null,
+    };
+  }));
+  return { instances: instances.filter(i => i.dt).sort((a, b) => a.dt.localeCompare(b.dt)) };
+}
+
+/**
  * Get the current total net sold tickets for an event (sum across all instances).
  */
 export async function getCurrentSold(eventId) {
