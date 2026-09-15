@@ -166,16 +166,19 @@ export async function scanOrders({
   const expired = () => deadline != null && Date.now() > deadline;
   const note = (msg) => { complete = false; lastError = lastError || msg; errors.push(msg); };
 
-  /** Ingest one page of orders. Returns how many tickets matched the target. */
+  /** Ingest one page of orders. Returns { matched, fresh }: tickets matched
+   *  to the target, and orders on the page not seen before. */
   function ingest(orders) {
     ordersSeen += orders.length;
     const matchedBefore = matchedTickets;
+    let fresh = 0;
     for (const order of orders) {
       const oid = order?.id;
       if (oid) {
         if (seenOrders.has(oid)) continue;
         seenOrders.add(oid);
       }
+      fresh++;
       const tix = order?.tickets || [];
       ticketsSeen += tix.length;
       if (!shape.orderKeys && order) shape.orderKeys = Object.keys(order).slice(0, 40);
@@ -215,7 +218,7 @@ export async function scanOrders({
         }
       }
     }
-    return matchedTickets - matchedBefore;
+    return { matched: matchedTickets - matchedBefore, fresh };
   }
 
   const get = async (m, page) => {
@@ -236,7 +239,7 @@ export async function scanOrders({
   // used to be noted and then abandoned, which dropped everything past it.
   const windows = months.map(m => ({
     from: m.from, to: m.to, pages: 0, orders: 0, matched: 0,
-    matchedByPage: [], status: 'open', errors: 0, endPage: null,
+    matchedByPage: [], status: 'open', errors: 0, endPage: null, repeated: false,
   }));
   const byKey = new Map(windows.map(w => [w.from, w]));
   const isOpen = w => w.status === 'open';
@@ -273,11 +276,17 @@ export async function scanOrders({
         note(`${m.from}..${m.to} p${page}: ${error}`);
         continue;
       }
-      const matched = ingest(orders);
+      const { matched, fresh } = ingest(orders);
       w.orders += orders.length;
       w.matched += matched;
       w.matchedByPage[page - 1] = matched;
       if (orders.length < 200 && isOpen(w)) { w.status = 'done'; w.endPage = page; }
+      // Spektrix answers some windows with the same orders on every page: the
+      // 8-11 July 2026 window returned 3,502 orders over 17 pages, 206 of them
+      // distinct, and each of its four days alone fit on one short page. A
+      // full page that adds nothing is the end of the window, not more of it;
+      // paging on would burn the budget to the hard ceiling every time.
+      if (fresh === 0 && page > 1 && isOpen(w)) { w.status = 'done'; w.endPage = page; w.repeated = true; }
     }
     for (const w of windows) {
       if (!isOpen(w)) continue;

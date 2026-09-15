@@ -202,6 +202,20 @@ section('scanOrders — failure modes');
   eq(r.windows.filter(w => w.status === 'done').length, r.windows.length - 2, 'every other window is done');
 }
 
+{
+  // Spektrix repeating the same page: page 1 is 200 orders, and every later
+  // page is those same 200 again. The window must close as done, not run to
+  // the ceiling or the deadline.
+  const fixed = Array.from({ length: 200 }, (_, i) => ({ id: `R${i}`, ...order('2026-07-09', 1) }));
+  const api = { calls: [], fetchPage: async (u) => { api.calls.push(u); return { orders: fixed }; } };
+  const r = await scanOrders({ eventId: EVENT, scanFrom: '2026-07-08', scanTo: '2026-07-11', base: BASE, fetchPage: api.fetchPage, maxPages: 8 });
+  eq(r.complete, true, 'a window whose pages repeat is complete once a page adds nothing');
+  eq(r.matchedTickets, 200, 'its orders are counted once');
+  eq(r.uniqueOrders, 200, 'one copy of each order');
+  eq(r.windows[0].repeated, true, 'the window is flagged as repeating');
+  eq(api.calls.length, 9, 'page 1, then one wave, and no more');
+}
+
 section('buildSeries');
 {
   const r = buildSeries({
