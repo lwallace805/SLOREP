@@ -367,7 +367,7 @@ section('comps');
   ] }];
   const paidOnly = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: mockApi(orders).fetchPage });
   eq(paidOnly.byDay, { '2026-06-10': 1 }, 'by default only the paid ticket counts');
-  eq(paidOnly.compTickets, 0, 'comps are not counted when excluded');
+  eq(paidOnly.compTickets, 2, 'comps are still counted when excluded, so a view can net them out of a seat count');
 
   const withComps = await scanOrders({ eventId: EVENT, scanFrom: '2026-06-08', scanTo: '2026-06-11', base: BASE, fetchPage: mockApi(orders).fetchPage, includeComps: true });
   eq(withComps.byDay, { '2026-06-10': 3 }, 'with comps included every seat counts');

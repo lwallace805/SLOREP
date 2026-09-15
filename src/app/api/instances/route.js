@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getEvents, getInstanceAvailability } from '@/lib/spektrix';
+import { getEvents, getEventsAround, findEvent, getInstanceAvailability } from '@/lib/spektrix';
 
 // Never cache at the CDN level; freshness is managed by the client-side
 // 5-minute refresh interval in PacingDashboard.
@@ -14,10 +14,10 @@ export async function GET(request) {
   }
 
   try {
+    // ?open=YYYY-MM-DD finds a closed show, which the bare listing no longer carries.
     const events = await getEvents();
-    const event = events.find(
-      (e) => e.name?.toLowerCase() === eventName.toLowerCase()
-    );
+    const event = findEvent(events, eventName)
+      || findEvent(await getEventsAround(searchParams.get('open')), eventName);
     if (!event) {
       return NextResponse.json({ error: `Event not found: ${eventName}` }, { status: 404 });
     }

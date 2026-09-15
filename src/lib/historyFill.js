@@ -198,15 +198,18 @@ export async function scanOrders({
       if (!date || date < scanFrom || date > scanTo) continue;
       for (const t of tix) {
         const paid = isPaidTicket(t);
-        if (!paid && !includeComps) continue;
         const id = typeof t?.event === 'string' ? t.event : t?.event?.id;
         if (!id) continue;
-        const perDay = byEventDay[id] || (byEventDay[id] = {});
-        perDay[date] = (perDay[date] || 0) + 1;
         // Only comps for the show being asked about. Counting every show's
         // comps here made the figure meaningless the moment a scan was scoped
-        // to one production.
+        // to one production. Counted whether or not they go in the buckets:
+        // the pacing page nets this figure out of the live seat count in net
+        // paid mode, and a net paid scan that reported 0 left it netting out
+        // nothing, so the tile read 1,154 beside a curve that ended at 1,009.
         if (!paid && (!eventId || id === eventId)) compTickets++;
+        if (!paid && !includeComps) continue;
+        const perDay = byEventDay[id] || (byEventDay[id] = {});
+        perDay[date] = (perDay[date] || 0) + 1;
         if (!eventId) { matchedTickets++; continue; }
         if (id !== eventId) continue;
         byDay[date] = (byDay[date] || 0) + 1;

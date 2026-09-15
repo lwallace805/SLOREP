@@ -17,7 +17,7 @@
 
 import { NextResponse } from 'next/server';
 import { unstable_cache } from 'next/cache';
-import { getEvents, findEvent } from '@/lib/spektrix';
+import { getEvents, getEventsAround, findEvent } from '@/lib/spektrix';
 import { scanOrders, buildSeries, scanWindow } from '@/lib/historyFill';
 import crypto from 'crypto';
 
@@ -128,8 +128,10 @@ export async function GET(request) {
   }
 
   try {
+    // Spektrix lists only events with performances still to come, so a closed
+    // show has to be looked up by the dates of its run.
     const events = await getEvents();
-    const event = findEvent(events, showName);
+    const event = findEvent(events, showName) || findEvent(await getEventsAround(openDate), showName);
     if (!event) {
       return NextResponse.json(
         { error: 'Event not found', showName, eventsSeen: events?.length ?? 0 },
@@ -142,8 +144,12 @@ export async function GET(request) {
     const { scanFrom, scanTo, truncated } = scanWindow(fromDate, end);
     const scan = await scanWithCache(event.id, scanFrom, scanTo, includeComps);
 
+    // The closing point goes on the end of the requested range. Stamping it on
+    // today for a scan that was asked to stop at closing night put a closed
+    // show's final two days past its last performance, where the page then
+    // could not place the seat count on closing night either.
     const { series, total } = buildSeries({
-      byDay: scan.byDay, baselineCount, openDate, scanFrom, scanTo, today, truncated,
+      byDay: scan.byDay, baselineCount, openDate, scanFrom, scanTo, today: end, truncated,
     });
 
     return NextResponse.json({
