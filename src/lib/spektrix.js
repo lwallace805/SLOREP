@@ -181,13 +181,16 @@ export async function getPastInstances(eventId) {
     const dt = inst?.start ? inst.start.slice(0, 16).replace('T', ' ') : '';
     let status = null;
     try { status = await spektrixGet(`/instances/${id}/status`); } catch { status = null; }
+    // Numbers only from the status: seat counts by state, never customer data.
+    const nums = {};
+    for (const [k, v] of Object.entries(status || {})) if (typeof v === 'number') nums[k] = v;
     return {
       id, dt,
-      capacity: status?.capacity ?? inst?.capacity ?? null,
-      available: status?.available ?? null,
-      sold: status?.capacity != null && status?.available != null ? status.capacity - status.available : null,
-      keys: Object.keys(inst || {}).slice(0, 30),
-      statusKeys: status ? Object.keys(status).slice(0, 30) : null,
+      cancelled: inst?.cancelled ?? null,
+      planId: inst?.planId ?? null,
+      capacity: status?.capacity ?? null,
+      sold: (status?.sold ?? 0) + (status?.scanned ?? 0),
+      status: nums,
     };
   }));
   return { instances: instances.filter(i => i.dt).sort((a, b) => a.dt.localeCompare(b.dt)) };
