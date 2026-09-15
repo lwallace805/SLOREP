@@ -51,22 +51,40 @@ export async function getEvents() {
 }
 
 /**
- * Events with a performance in a window around a date. The bare listing only
- * carries events with performances still to come, so a closed show cannot be
- * found by name once its run is over; its opening night is enough to find it.
+ * Events that were running around a date, for a closed show the bare listing
+ * no longer carries (it holds only events with performances still to come, and
+ * the instances listing behaves the same way). Orders placed in the week
+ * around opening night carry the event id on every ticket, so the events are
+ * read off those and then fetched one by one. `debug` collects how each
+ * lookup fared so the route can say why a show was not found.
  */
-export async function getEventsAround(dateStr, before = 45, after = 120) {
+export async function getEventsAround(dateStr, debug = null, before = 3, after = 10) {
   if (!dateStr) return [];
   const shift = (n) => new Date(Date.parse(dateStr + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
   const from = shift(-before), to = shift(after);
-  // Instances in the window carry their event id; the events themselves are
-  // then fetched one by one, since the events listing has no date filter that
-  // reaches into the past.
-  let instances = [];
-  try { instances = await spektrixGetAll(`/instances?start_from=${from}&start_to=${to}`); } catch { instances = []; }
-  const ids = [...new Set(instances.map(i => (typeof i?.event === 'string' ? i.event : i?.event?.id)).filter(Boolean))];
-  const events = await Promise.all(ids.map(id => spektrixGet(`/events/${id}`).catch(() => null)));
-  return events.filter(e => e && e.id);
+  const ids = new Set();
+  // The events listing, in case a date filter reaches into the past after all.
+  for (const q of [`instanceStart_from=${from}&instanceStart_to=${to}`, `start_from=${from}&start_to=${to}`]) {
+    try {
+      const evs = await spektrixGetAll(`/events?${q}`);
+      if (debug) debug[q] = evs.length;
+      for (const e of evs) if (e?.id) ids.add(e.id);
+    } catch (err) { if (debug) debug[q] = `error: ${err.message}`; }
+  }
+  try {
+    const orders = await spektrixGet(`/orders?DateFrom=${from}&DateTo=${to}&page=1&pageSize=200`);
+    if (debug) debug.ordersSampled = Array.isArray(orders) ? orders.length : 'not an array';
+    for (const o of Array.isArray(orders) ? orders : []) {
+      for (const t of o?.tickets || []) {
+        const id = typeof t?.event === 'string' ? t.event : t?.event?.id;
+        if (id) ids.add(id);
+      }
+    }
+  } catch (err) { if (debug) debug.orders = `error: ${err.message}`; }
+  const events = await Promise.all([...ids].map(id => spektrixGet(`/events/${id}`).catch(() => null)));
+  const found = events.filter(e => e && e.id);
+  if (debug) debug.eventsFound = found.map(e => e.name);
+  return found;
 }
 
 /**

@@ -16,13 +16,12 @@ export async function GET(request) {
   try {
     // ?open=YYYY-MM-DD finds a closed show, which the bare listing no longer carries.
     const events = await getEvents();
-    let around = null;
+    const lookup = {};
     const event = findEvent(events, eventName)
-      || findEvent(around = await getEventsAround(searchParams.get('open')), eventName);
+      || findEvent(await getEventsAround(searchParams.get('open'), lookup), eventName);
     if (!event) {
       if (searchParams.get('debug')) {
-        return NextResponse.json({ error: `Event not found: ${eventName}`, eventsSeen: events.length,
-          aroundSeen: around?.length ?? null, aroundNames: (around || []).map(e => e.name).slice(0, 40) }, { status: 404 });
+        return NextResponse.json({ error: `Event not found: ${eventName}`, eventsSeen: events.length, lookup }, { status: 404 });
       }
       return NextResponse.json({ error: `Event not found: ${eventName}` }, { status: 404 });
     }
