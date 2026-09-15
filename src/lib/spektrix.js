@@ -193,7 +193,22 @@ export async function getPastInstances(eventId) {
       status: nums,
     };
   }));
-  return { instances: instances.filter(i => i.dt).sort((a, b) => a.dt.localeCompare(b.dt)) };
+  const sorted = instances.filter(i => i.dt).sort((a, b) => a.dt.localeCompare(b.dt));
+  // Seat count of the plan the run used, from the first performance's plan.
+  // Counts only, never seat-holder data.
+  let plan = null;
+  if (sorted.length) {
+    for (const path of [`/instances/${sorted[0].id}/plan`, `/plans/${sorted[0].planId}`]) {
+      try {
+        const raw = await spektrixGet(path);
+        const seats = Array.isArray(raw?.seats) ? raw.seats.length : null;
+        const areas = Array.isArray(raw?.areas) ? raw.areas.map(a => ({ name: a?.name, seats: Array.isArray(a?.seats) ? a.seats.length : null, capacity: a?.capacity ?? null })) : null;
+        plan = { path, keys: Object.keys(raw || {}).slice(0, 30), seats, areas, capacity: raw?.capacity ?? null };
+        break;
+      } catch (err) { plan = { path, error: err.message }; }
+    }
+  }
+  return { instances: sorted, plan };
 }
 
 /**

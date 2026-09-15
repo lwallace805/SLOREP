@@ -169,7 +169,13 @@ export async function GET(request) {
       // Windows that did not page to their end, with why. Their partial data
       // is still in the series; the windows that finished are not discarded.
       incompleteWindows: scan.incompleteWindows ?? [],
-      ...(searchParams.get('debug') ? { shape: scan.shape, windows: scan.windows } : {}),
+      ...(searchParams.get('debug') ? {
+        shape: scan.shape, windows: scan.windows,
+        // Tickets per performance across the scan, so a run's sold-out nights
+        // show what its house actually held.
+        instanceTotals: Object.fromEntries(Object.entries(scan.byInstanceDay || {})
+          .map(([iid, perDay]) => [iid, Object.values(perDay).reduce((a, b) => a + b, 0)])),
+      } : {}),
     });
   } catch (err) {
     console.error('history-fill error:', err.message);
