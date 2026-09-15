@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node scripts/test-history-fill.mjs && node scripts/test-event-matching.mjs"
+    "test": "node scripts/test-history-fill.mjs && node scripts/test-event-matching.mjs",
+    "father-report": "node --no-warnings scripts/father-report.mjs",
+    "father-report:catalogue": "node --no-warnings scripts/father-report.mjs --catalogue"
   },
   "dependencies": {
     "next": "16.2.6",
@@ -19,6 +21,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "exceljs": "^4.4.0",
     "tailwindcss": "^4.3.1",
     "typescript": "^5"
   }

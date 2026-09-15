@@ -43,3 +43,6 @@ next-env.d.ts
 
 # build output (was accidentally committed)
 /dist
+
+# father-report raw API cache (contains order and customer ids)
+/output/cache/
