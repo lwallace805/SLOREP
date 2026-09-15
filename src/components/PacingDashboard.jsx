@@ -7,7 +7,7 @@ import {
 } from "recharts";
 
 import { DATA } from '@/data/pacingData';
-import { isOnSale, statusOf, currentShowName, pacificToday, daysFromOpen } from '@/lib/showStatus';
+import { isOnSale, statusOf, currentShowName, pacificToday, daysFromOpen, closeDateFor } from '@/lib/showStatus';
 import TicketMixBar from './TicketMixBar';
 
 const CATEGORIES = {
@@ -117,6 +117,39 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
   // `show` here may be a liveDATA copy, so match on name rather than identity.
   const onSale = (show) => !!show && onSaleNames.has(show.name);
 
+  /**
+   * Shows whose curve has to come from Spektrix rather than the data file.
+   *
+   * That is every show still on sale, and every closed show whose baked series
+   * stops before its run ended. The data file is frozen at the last export, so
+   * a show that closes after it carries only its export-day points: The Father
+   * closed on 13 September 2026 with seven presale points ending at day -88,
+   * and the moment its run ended the page snapped from the measured curve back
+   * to "31 tickets, 88 days before opening". Spektrix still lists a show for a
+   * while after it closes, so its seat count and order history are there to
+   * draw the whole run from; once Spektrix drops it the data file is all that
+   * is left, which is the case for regenerating the file after each run.
+   */
+  const closeDay = (show) => daysFromOpen(show.open, closeDateFor(show, runWindows));
+  const liveNames = useMemo(() => new Set(DATA.filter(s => {
+    if (!s.series?.length) return false;
+    if (onSaleNames.has(s.name)) return true;
+    if (!runWindows[s.name.toLowerCase()]) return false;
+    return s.series[s.series.length - 1].d < closeDay(s);
+  }).map(s => s.name)), [runWindows, onSaleNames]);
+  const needsLive = (show) => !!show && liveNames.has(show.name);
+  const isPast = (show) => !!show && !onSaleNames.has(show.name);
+
+  /**
+   * A series that ends before opening is presale export data, and for The
+   * Father it ran at half the order scan's ticket count at every point (31
+   * against 57 on the same day). Rather than splice a measured curve onto a
+   * baseline on a different basis, rebuild from the first point with the scan
+   * alone. A series that reaches past opening is a completed run's export and
+   * is only extended, never replaced.
+   */
+  const rebuildFromScan = (show) => show.series[show.series.length - 1].d < 0;
+
   // Open the dashboard on the production being marketed right now: of the shows
   // whose run has not ended, the one opening soonest.
   const defaultCurrent = useMemo(
@@ -142,7 +175,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
   // show on mount meant seven Spektrix round-trips for six charts nobody was
   // looking at; selecting a show is what makes its numbers worth pulling.
   const selectedShow = DATA.find(s => s.name === currentName);
-  const selectedIsLive = onSale(selectedShow) && selectedShow?.series.length > 0;
+  const selectedIsLive = needsLive(selectedShow);
 
   useEffect(() => {
     if (!selectedIsLive) return;
@@ -171,64 +204,97 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     };
 
     fetchLive();
-    const interval = setInterval(fetchLive, 5 * 60 * 1000);
-    return () => { cancelled = true; clearInterval(interval); };
+    // A closed show's seat count no longer moves; one reading is enough.
+    const interval = isPast(show) ? null : setInterval(fetchLive, 5 * 60 * 1000);
+    return () => { cancelled = true; if (interval) clearInterval(interval); };
   }, [currentName, selectedIsLive]);
 
   // Fill the gap between the last static export point and today with real
   // per-day order counts, so the milestone rows in between are measured rather
-  // than interpolated.
+  // than interpolated. For a closed show the gap ends at its closing night.
   useEffect(() => {
     if (!selectedIsLive) return;
     let cancelled = false;
     const show = selectedShow;
+    const firstPt = show.series[0];
     const lastPt = show.series[show.series.length - 1];
     const [oy, om, od] = show.open.split('-').map(Number);
     const openUtcMs = Date.UTC(oy, om - 1, od);
-    const fromDate = new Date(openUtcMs + (lastPt.d + 1) * 86400000).toISOString().slice(0, 10);
-    if (fromDate > today) return;
+    const dateAt = (d) => new Date(openUtcMs + d * 86400000).toISOString().slice(0, 10);
+    const rebuild = rebuildFromScan(show);
+    const fromDate = rebuild ? dateAt(firstPt.d) : dateAt(lastPt.d + 1);
+    const baseline0 = rebuild ? 0 : lastPt.c;
+    const toDate = isPast(show) ? closeDateFor(show, runWindows) : today;
+    if (fromDate > toDate) return;
 
-    const params = new URLSearchParams({
-      name: show.name,
-      fromDate,
-      baselineCount: String(lastPt.c),
-      openDate: show.open,
-    });
     // Record what happened either way. An earlier version returned early on an
     // error response, so a failing route produced no diagnostic at all — the
     // banner appeared with nothing to explain it, which is the one case worth
     // explaining. Every outcome now lands in gapPartial.
     const note = (meta) => {
-      if (!cancelled) setGapPartial(prev => ({ ...prev, [show.name]: meta }));
+      if (!cancelled) setGapPartial(prev => ({ ...prev, [show.name]: { rebuild, ...meta } }));
     };
-    params.set('comps', withComps ? '1' : '0');
-    fetch(`/api/history-fill?${params}`)
-      .then(async (r) => {
-        let data = null;
-        try { data = await r.json(); } catch { /* not JSON */ }
+    const fail = (lastError, ordersSeen = null) =>
+      note({ complete: false, found: 0, ordersSeen, lastError });
+
+    // The route scans at most 120 days per request. A show on sale from May
+    // that runs into the autumn is a longer gap than that, so walk it in legs,
+    // each starting where the last stopped and carrying its total forward.
+    const MAX_LEGS = 6;
+    (async () => {
+      const series = [];
+      let baseline = baseline0;
+      let from = fromDate;
+      let complete = true;
+      let compTickets = 0;
+      let ordersSeen = 0;
+      let matchedTickets = 0;
+      const errors = [];
+      for (let leg = 0; leg < MAX_LEGS && from <= toDate; leg++) {
+        const params = new URLSearchParams({
+          name: show.name, fromDate: from, toDate,
+          baselineCount: String(baseline), openDate: show.open,
+          comps: withComps ? '1' : '0',
+        });
+        let r, data = null;
+        try {
+          r = await fetch(`/api/history-fill?${params}`);
+          try { data = await r.json(); } catch { /* not JSON */ }
+        } catch (err) {
+          if (!cancelled) fail(`request failed: ${err?.message || 'unknown'}`);
+          return;
+        }
         if (cancelled) return;
         if (!r.ok || !data || data.error) {
-          note({
-            complete: false, found: 0, ordersSeen: data?.ordersSeen ?? null,
-            lastError: data?.error ? `${r.status}: ${data.error}` : `http ${r.status}`,
-          });
+          fail(data?.error ? `${r.status}: ${data.error}` : `http ${r.status}`, data?.ordersSeen ?? null);
           return;
         }
-        if (!data.series?.length) {
-          note({ complete: false, found: 0, ordersSeen: data.ordersSeen ?? null, lastError: 'empty series' });
-          return;
-        }
-        setGapSeries(prev => ({ ...prev, [show.name]: data.series }));
-        note({
-          complete: data.complete !== false,
-          found: data.found ?? 0,
-          lastError: data.lastError || null,
-          ordersSeen: data.ordersSeen ?? null,
-          matchedTickets: data.matchedTickets ?? null,
-          compTickets: data.compTickets ?? 0,
-        });
-      })
-      .catch((err) => note({ complete: false, found: 0, ordersSeen: null, lastError: `request failed: ${err?.message || 'unknown'}` }));
+        if (!data.series?.length) { fail('empty series', data.ordersSeen ?? null); return; }
+        // A later leg's first point restates the total its predecessor ended
+        // on; keep the earlier one.
+        const lastD = series.length ? series[series.length - 1].d : -Infinity;
+        for (const pt of data.series) if (pt.d > lastD) series.push(pt);
+        complete = complete && data.complete !== false;
+        compTickets += data.compTickets ?? 0;
+        ordersSeen += data.ordersSeen ?? 0;
+        matchedTickets += data.matchedTickets ?? 0;
+        for (const e of data.errors ?? []) errors.push(e);
+        baseline = data.total;
+        if (!data.truncated || data.scanTo >= toDate) break;
+        from = dateAt(daysFromOpen(show.open, data.scanTo) + 1);
+      }
+      if (cancelled) return;
+      setGapSeries(prev => ({ ...prev, [show.name]: series }));
+      note({
+        complete,
+        found: baseline - baseline0,
+        lastError: errors[0] || null,
+        errors,
+        ordersSeen,
+        matchedTickets,
+        compTickets,
+      });
+    })();
     return () => { cancelled = true; };
   }, [currentName, selectedIsLive, today, withComps]);
 
@@ -254,15 +320,17 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
   }, [liveData, gapPartial, withComps]);
 
   const getLiveSeries = (show) => {
-    if (!onSale(show)) return show.series;
+    if (!needsLive(show)) return show.series;
     const live = liveAdjusted[show.name];
     const gap  = gapSeries[show.name]; // [{d,c}] from history-fill
     const meta = gapPartial[show.name];
     const realCap = (live?.cap > 0 ? live.cap : show.cap);
     const pctOf = c => (realCap > 0 ? Math.round(c / realCap * 1000) / 10 : 0);
 
-    // Start from static export points
-    let base = [...show.series];
+    // Start from static export points, unless the scan is rebuilding the
+    // series from the first order, in which case they are what it replaces.
+    const rebuilt = meta?.rebuild && gap?.length > 0;
+    let base = rebuilt ? [] : [...show.series];
     const lastStaticC = base[base.length - 1]?.c ?? 0;
     const unexplained = (live?.c ?? 0) - lastStaticC;
 
@@ -285,15 +353,21 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
         ...base,
         ...gap.filter(pt => pt.d > maxStaticD).map(pt => ({ d: pt.d, c: pt.c, p: pctOf(pt.c) })),
       ];
+    } else if (rebuilt) {
+      base = [...show.series];
     }
 
     // The live availability reading is the authority on how many seats are gone
     // right now. It supersedes anything sitting on or after its day instead of
-    // yielding to it on a tie.
-    if (live?.c > 0 && live.d >= (base[base.length - 1]?.d ?? -Infinity) ) {
-      base = base.filter(pt => pt.d < live.d);
-      const c = Math.max(live.c, base[base.length - 1]?.c ?? 0);
-      base = [...base, { d: live.d, c, p: pctOf(c) }];
+    // yielding to it on a tie. For a closed show the reading is the run's
+    // final and belongs on closing night, not on whatever day it was taken.
+    if (live?.c > 0) {
+      const liveD = isPast(show) ? Math.min(live.d, closeDay(show)) : live.d;
+      if (liveD >= (base[base.length - 1]?.d ?? -Infinity)) {
+        base = base.filter(pt => pt.d < liveD);
+        const c = Math.max(live.c, base[base.length - 1]?.c ?? 0);
+        base = [...base, { d: liveD, c, p: pctOf(c) }];
+      }
     }
 
     return base;
@@ -302,12 +376,12 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
   const liveApplied = useMemo(() => {
     const applied = {};
     DATA.forEach(show => {
-      if (!onSale(show)) return;
+      if (!needsLive(show)) return;
       const live = liveAdjusted[show.name];
       if (live && live.c > 0) applied[show.name] = true;
     });
     return applied;
-  }, [liveAdjusted]);
+  }, [liveAdjusted, liveNames]);
 
   const liveDATA = useMemo(() => DATA.map(show => {
     const series = getLiveSeries(show);
@@ -322,7 +396,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     return {
       ...show,
       series,
-      final: onSale(show) ? soldSoFar : show.final,
+      final: needsLive(show) ? soldSoFar : show.final,
       // Use real cap from Spektrix when available (excludes cancelled performances)
       cap: (liveApplied[show.name] && liveAdjusted[show.name]?.cap > 0)
         ? liveAdjusted[show.name].cap
@@ -333,7 +407,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
         : null,
       playedCap: liveApplied[show.name] ? (liveAdjusted[show.name]?.playedCap ?? 0) : 0,
     };
-  }), [liveAdjusted, liveApplied, gapSeries, gapPartial, onSaleNames]);
+  }), [liveAdjusted, liveApplied, gapSeries, gapPartial, onSaleNames, liveNames]);
 
   const current = liveDATA.find(s => s.name === currentName) || liveDATA[0];
 
@@ -346,13 +420,13 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
    * before this was surfaced.
    */
   const gapUnmeasured = useMemo(() => {
-    if (!onSale(current)) return false;
+    if (!needsLive(current)) return false;
     const meta = gapPartial[current.name];
     const staticShow = DATA.find(x => x.name === current.name);
     const lastStatic = staticShow?.series?.[staticShow.series.length - 1];
     const liveNow = liveAdjusted[current.name]?.c;
     if (!lastStatic || !liveNow) return false;
-    const unexplained = liveNow - lastStatic.c;
+    const unexplained = liveNow - (meta?.rebuild ? 0 : lastStatic.c);
     if (unexplained < 20) return false;               // nothing meaningful to explain
     if (!meta) return true;                            // fill never returned
     // Warn while any window is missing or the fill is materially short, even
