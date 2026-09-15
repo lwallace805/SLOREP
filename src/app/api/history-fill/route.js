@@ -98,7 +98,7 @@ async function scanWithCache(eventId, scanFrom, scanTo, includeComps) {
       () => runScan(eventId, scanFrom, scanTo, includeComps),
       // v2: the scan now pages every window to its end. Keyed on the counting
       // basis too, so a comps=1 answer is never served to a comps=0 request.
-      ['history-fill', 'v2', eventId, scanFrom, scanTo, includeComps ? 'comps' : 'paid'],
+      ['history-fill', 'v3', eventId, scanFrom, scanTo, includeComps ? 'comps' : 'paid'],
       { revalidate: SCAN_TTL_SECONDS, tags: ['history-fill'] },
     )();
   } catch (err) {
