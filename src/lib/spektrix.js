@@ -58,7 +58,15 @@ export async function getEvents() {
 export async function getEventsAround(dateStr, before = 45, after = 120) {
   if (!dateStr) return [];
   const shift = (n) => new Date(Date.parse(dateStr + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
-  return spektrixGetAll(`/events?instanceStart_from=${shift(-before)}&instanceStart_to=${shift(after)}`);
+  const from = shift(-before), to = shift(after);
+  // Instances in the window carry their event id; the events themselves are
+  // then fetched one by one, since the events listing has no date filter that
+  // reaches into the past.
+  let instances = [];
+  try { instances = await spektrixGetAll(`/instances?start_from=${from}&start_to=${to}`); } catch { instances = []; }
+  const ids = [...new Set(instances.map(i => (typeof i?.event === 'string' ? i.event : i?.event?.id)).filter(Boolean))];
+  const events = await Promise.all(ids.map(id => spektrixGet(`/events/${id}`).catch(() => null)));
+  return events.filter(e => e && e.id);
 }
 
 /**
