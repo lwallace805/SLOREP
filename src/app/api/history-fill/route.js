@@ -1,5 +1,5 @@
 /**
- * /api/history-fill?name=<showName>&fromDate=<YYYY-MM-DD>&baselineCount=<N>&openDate=<YYYY-MM-DD>[&comps=0|1]
+ * /api/history-fill?name=<showName>&fromDate=<YYYY-MM-DD>&baselineCount=<N>&openDate=<YYYY-MM-DD>[&comps=0|1][&toDate=<YYYY-MM-DD>]
  *
  * Cumulative ticket counts per day between the last static export point and
  * today, so the pacing curve climbs rather than running flat and then jumping
@@ -119,6 +119,9 @@ export async function GET(request) {
   const openDate      = searchParams.get('openDate');
   // Net paid by default, as the pacing page's toggle is.
   const includeComps  = searchParams.get('comps') === '1';
+  // Optional end, for rebuilding a closed show's series without scanning past
+  // its closing night. Clamped to today either way.
+  const toDate        = searchParams.get('toDate');
 
   if (!showName || !fromDate || !openDate) {
     return NextResponse.json({ error: 'name, fromDate, openDate required' }, { status: 400 });
@@ -135,7 +138,8 @@ export async function GET(request) {
     }
 
     const today = new Date().toISOString().slice(0, 10);
-    const { scanFrom, scanTo, truncated } = scanWindow(fromDate, today);
+    const end = toDate && toDate < today ? toDate : today;
+    const { scanFrom, scanTo, truncated } = scanWindow(fromDate, end);
     const scan = await scanWithCache(event.id, scanFrom, scanTo, includeComps);
 
     const { series, total } = buildSeries({
