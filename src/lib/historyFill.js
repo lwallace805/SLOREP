@@ -8,9 +8,19 @@
  * availability reading lands.
  */
 
-// 200 orders/page. Six pages covers ~1200 orders in a month, comfortably above
-// this theatre's volume, and bounds the worst case.
+// 200 orders/page. Pages are fetched in waves of this many per window: page 1
+// alone first, then this many at a time for any window whose last page came
+// back full. It sizes a wave, not the scan.
 export const MAX_PAGES_PER_MONTH = 8;
+// Hard ceiling on pages for one window, 8,000 orders across four days. The
+// ceiling used to be the wave size, eight pages, and a window that filled all
+// eight was simply abandoned: the ceiling was noted and every order past page
+// 8 dropped. The 8-11 July 2026 window (Finding Nemo's opening and the season
+// allocations landing together) filled it on every run, and The Father's
+// curve came back well short of the live seat count. A window still full at
+// this bound is reported as such and the scan flagged incomplete, never
+// silently short.
+export const MAX_PAGES_PER_WINDOW = 40;
 // A long gap is still bounded so one request cannot scan an entire season.
 export const MAX_SCAN_DAYS = 120;
 
@@ -108,11 +118,16 @@ export function orderDateOf(order) {
  * returned incomplete, so the caller answers with a partial rather than being
  * killed mid-flight and returning nothing at all.
  *
- * Returns { byDay, complete, ordersSeen, ticketsSeen, matchedTickets, lastError }.
+ * Returns { byDay, complete, ordersSeen, ticketsSeen, matchedTickets, lastError,
+ * errors, incompleteWindows, windows }. `complete` is true only when every
+ * window ended on a short page with no failed fetch. `lastError` is the first
+ * problem, kept for existing callers; `errors` has all of them and
+ * `incompleteWindows` names each window that did not finish and why.
  */
 export async function scanOrders({
   eventId, scanFrom, scanTo, base, fetchPage,
-  maxPages = MAX_PAGES_PER_MONTH, deadline = null, includeComps = false,
+  maxPages = MAX_PAGES_PER_MONTH, maxPagesPerWindow = MAX_PAGES_PER_WINDOW,
+  deadline = null, includeComps = false,
 }) {
   const months = dateWindows(scanFrom, scanTo);
   const byDay = {};
@@ -134,6 +149,9 @@ export async function scanOrders({
   // can always say how much of a figure is papered rather than sold.
   let compTickets = 0;
   let lastError = null;
+  // Every problem, not only the first. lastError kept the first message only,
+  // so a second failing window was invisible.
+  const errors = [];
   // Windows are contiguous, but Spektrix matches an order whose transactions
   // touch the range, and an order paid over several weeks touches several
   // windows. Counting its tickets once per window inflated the total well past
@@ -146,10 +164,12 @@ export async function scanOrders({
 
   const url = (m, page) => `${base}/orders?DateFrom=${m.from}&DateTo=${m.to}&page=${page}&pageSize=200`;
   const expired = () => deadline != null && Date.now() > deadline;
-  const note = (msg) => { complete = false; lastError = lastError || msg; };
+  const note = (msg) => { complete = false; lastError = lastError || msg; errors.push(msg); };
 
+  /** Ingest one page of orders. Returns how many tickets matched the target. */
   function ingest(orders) {
     ordersSeen += orders.length;
+    const matchedBefore = matchedTickets;
     for (const order of orders) {
       const oid = order?.id;
       if (oid) {
@@ -195,6 +215,7 @@ export async function scanOrders({
         }
       }
     }
+    return matchedTickets - matchedBefore;
   }
 
   const get = async (m, page) => {
@@ -204,29 +225,82 @@ export async function scanOrders({
   };
 
   // Pages are fetched in waves rather than walked one after another. Paging
-  // sequentially meant a month could cost maxPages round trips end to end,
+  // sequentially meant a window could cost maxPages round trips end to end,
   // which ran past the platform ceiling and returned 504 — the function was
-  // never failing, only taking too long. Two waves bound the depth instead.
-  const wave1 = await Promise.all(months.map(m => get(m, 1)));
-  const busy = [];
-  for (const { m, orders, error } of wave1) {
-    if (error) { note(`${m.from}..${m.to} p1: ${error}`); continue; }
-    ingest(orders);
-    if (orders.length >= 200) busy.push(m);
-  }
+  // never failing, only taking too long.
+  //
+  // The first wave probes page 1 of every window; most windows end there. Each
+  // later wave fetches the next `maxPages` pages of every window whose last
+  // page came back full, and keeps going until every window has returned a
+  // short page. A window is not finished until it does: a full final page
+  // used to be noted and then abandoned, which dropped everything past it.
+  const windows = months.map(m => ({
+    from: m.from, to: m.to, pages: 0, orders: 0, matched: 0,
+    matchedByPage: [], status: 'open', errors: 0, endPage: null,
+  }));
+  const byKey = new Map(windows.map(w => [w.from, w]));
+  const isOpen = w => w.status === 'open';
 
-  if (busy.length && maxPages > 1) {
+  while (windows.some(isOpen) && !expired()) {
     const tasks = [];
-    for (const m of busy) for (let p = 2; p <= maxPages; p++) tasks.push([m, p]);
-    const wave2 = await Promise.all(tasks.map(([m, p]) => get(m, p)));
-    for (const { m, page, orders, error } of wave2) {
-      if (error) { note(`${m.from}..${m.to} p${page}: ${error}`); continue; }
-      ingest(orders);
-      if (orders.length >= 200 && page === maxPages) note(`${m.from}..${m.to}: hit ${maxPages}-page ceiling`);
+    for (const w of windows) {
+      if (!isOpen(w)) continue;
+      const first = w.pages + 1;
+      const count = first === 1 ? 1 : maxPages;
+      const last = Math.min(first + count - 1, maxPagesPerWindow);
+      for (let p = first; p <= last; p++) tasks.push([w, p]);
+    }
+    const results = await Promise.all(tasks.map(([w, p]) => get({ from: w.from, to: w.to }, p)));
+    // Pages are fetched in parallel but settled in order, so a short page
+    // closes the window and anything fetched past it is still ingested.
+    results.sort((a, b) => a.page - b.page);
+    for (const { m, page, orders, error } of results) {
+      const w = byKey.get(m.from);
+      // A page abandoned at the deadline is reported once per window below,
+      // not once per page, and does not count as fetched.
+      if (error === 'deadline reached') continue;
+      // Past the window's short page there is nothing: the rest of that wave
+      // was already in flight, and a fault on an empty page is no fault.
+      if (w.endPage != null && page > w.endPage) continue;
+      w.pages = Math.max(w.pages, page);
+      if (error) {
+        // A failed page ends the window: paging on past a fault would spend
+        // the budget on a window that is already incomplete, and a window
+        // whose every page fails would otherwise fail forty times. Pages that
+        // answered in the same wave are still ingested below.
+        w.errors++;
+        if (isOpen(w)) w.status = 'error';
+        note(`${m.from}..${m.to} p${page}: ${error}`);
+        continue;
+      }
+      const matched = ingest(orders);
+      w.orders += orders.length;
+      w.matched += matched;
+      w.matchedByPage[page - 1] = matched;
+      if (orders.length < 200 && isOpen(w)) { w.status = 'done'; w.endPage = page; }
+    }
+    for (const w of windows) {
+      if (!isOpen(w)) continue;
+      if (w.pages >= maxPagesPerWindow) {
+        w.status = 'ceiling';
+        note(`${w.from}..${w.to}: still full after ${maxPagesPerWindow} pages (${w.orders} orders); narrow the window`);
+      }
     }
   }
+  for (const w of windows) {
+    if (isOpen(w)) {
+      w.status = 'deadline';
+      note(`${w.from}..${w.to}: deadline reached after page ${w.pages}`);
+    }
+  }
+  const incompleteWindows = windows
+    .filter(w => w.status !== 'done')
+    .map(w => `${w.from}..${w.to}: ${w.status}`);
 
-  return { byDay, byEventDay, byInstanceDay, complete, ordersSeen, ticketsSeen, matchedTickets, compTickets, lastError, shape, uniqueOrders: seenOrders.size };
+  return {
+    byDay, byEventDay, byInstanceDay, complete, ordersSeen, ticketsSeen, matchedTickets, compTickets,
+    lastError, errors, incompleteWindows, windows, shape, uniqueOrders: seenOrders.size,
+  };
 }
 
 /**
