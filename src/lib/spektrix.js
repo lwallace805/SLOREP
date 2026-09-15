@@ -51,6 +51,17 @@ export async function getEvents() {
 }
 
 /**
+ * Events with a performance in a window around a date. The bare listing only
+ * carries events with performances still to come, so a closed show cannot be
+ * found by name once its run is over; its opening night is enough to find it.
+ */
+export async function getEventsAround(dateStr, before = 45, after = 120) {
+  if (!dateStr) return [];
+  const shift = (n) => new Date(Date.parse(dateStr + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
+  return spektrixGetAll(`/events?instanceStart_from=${shift(-before)}&instanceStart_to=${shift(after)}`);
+}
+
+/**
  * Season-data show names and Spektrix event names do not always agree — the
  * season file says "Finding Nemo" where Spektrix may carry a fuller billing
  * title. An exact-only match silently drops those shows: they simply never get
