@@ -100,7 +100,17 @@ export async function GET(request) {
   try {
     const today = new Date().toISOString().slice(0, 10);
     const events = await getEvents();
-    const event = findEvent(events, show.name) || findEvent(await getEventsAround(show.open), show.name);
+    let event = findEvent(events, show.name);
+    if (!event) {
+      // The data file suffixes a year onto a title the theatre repeats (A
+      // Christmas Story 2024); Spektrix has several events under the bare
+      // title, so the one whose first performance is nearest opening wins.
+      const around = await getEventsAround(show.open);
+      const bare = show.name.replace(/\s+20\d\d$/, '').toLowerCase();
+      const same = around.filter(e => e.name?.toLowerCase() === bare);
+      const dist = (e) => Math.abs(Date.parse((e.firstInstanceDateTime || '').slice(0, 10) || '1970-01-01') - Date.parse(show.open));
+      event = same.length ? same.reduce((a, b) => (dist(a) <= dist(b) ? a : b)) : findEvent(around, show.name);
+    }
     if (!event) return NextResponse.json({ error: 'Event not found', name }, { status: 404 });
 
     // Run window and capacity.
