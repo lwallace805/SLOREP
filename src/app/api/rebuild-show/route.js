@@ -24,10 +24,16 @@ import crypto from 'crypto';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
-const REQUEST_TIMEOUT_MS = 20000;
-const LEG_BUDGET_MS = 35000;
+// A subscription on-sale week is a heavy window: the June 2023 windows timed
+// out at 20s a page on every 23-24 show. Two-day windows halve what Spektrix
+// has to filter per request, and the request gets longer to answer. The
+// function may outlive a client's 60s wait; a complete leg is cached, so the
+// next call picks it up.
+const REQUEST_TIMEOUT_MS = 40000;
+const LEG_BUDGET_MS = 55000;
+const WINDOW_DAYS = 2;
 // Do not start a leg past this point in the call; answer partial instead.
-const CALL_BUDGET_MS = 45000;
+const CALL_BUDGET_MS = 50000;
 const SCAN_TTL_SECONDS = 900;
 
 function spektrixSign(url) {
@@ -67,13 +73,13 @@ const cachedLeg = async (eventId, scanFrom, scanTo, includeComps) => {
     return await unstable_cache(
       async () => {
         const base = `https://system.spektrix.com/${process.env.SPEKTRIX_CLIENT_NAME}/api/v3`;
-        const scan = await scanOrders({ eventId, scanFrom, scanTo, base, fetchPage, includeComps, deadline: Date.now() + LEG_BUDGET_MS });
+        const scan = await scanOrders({ eventId, scanFrom, scanTo, base, fetchPage, includeComps, windowDays: WINDOW_DAYS, deadline: Date.now() + LEG_BUDGET_MS });
         // Only the parts the series needs; the cache entry stays small.
         const leg = { byDay: scan.byDay, complete: scan.complete, incompleteWindows: scan.incompleteWindows, compTickets: scan.compTickets };
         if (!scan.complete) throw new IncompleteLeg(leg);
         return leg;
       },
-      ['history-fill', 'v3', eventId, scanFrom, scanTo, includeComps ? 'comps' : 'paid'],
+      ['rebuild-show', 'v1', eventId, scanFrom, scanTo, includeComps ? 'comps' : 'paid'],
       { revalidate: SCAN_TTL_SECONDS, tags: ['history-fill'] },
     )();
   } catch (err) {

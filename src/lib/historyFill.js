@@ -127,9 +127,9 @@ export function orderDateOf(order) {
 export async function scanOrders({
   eventId, scanFrom, scanTo, base, fetchPage,
   maxPages = MAX_PAGES_PER_MONTH, maxPagesPerWindow = MAX_PAGES_PER_WINDOW,
-  deadline = null, includeComps = false,
+  deadline = null, includeComps = false, windowDays = WINDOW_DAYS,
 }) {
-  const months = dateWindows(scanFrom, scanTo);
+  const months = dateWindows(scanFrom, scanTo, windowDays);
   const byDay = {};
   // Paid tickets per event per day. The orders fetch is the expensive part and
   // returns every event's tickets regardless, so bucketing them all costs
