@@ -99,19 +99,28 @@ export async function GET(request) {
 
   try {
     const today = new Date().toISOString().slice(0, 10);
-    const events = await getEvents();
-    let event = findEvent(events, show.name);
+    // Resolve by the run's dates first. The data file suffixes a year onto a
+    // title the theatre repeats (A Christmas Story 2024) and Spektrix has
+    // several events under the bare title; and a loose name match against the
+    // current listing bound Million Dollar Quartet (2025) to Million Dollar
+    // Quartet Christmas (2026). An event whose first performance is months
+    // from this show's opening is never this show.
+    const DAY = 86400000;
+    const dist = (e) => {
+      const first = (e?.firstInstanceDateTime || '').slice(0, 10);
+      return first ? Math.abs(Date.parse(first) - Date.parse(show.open)) / DAY : 0;
+    };
+    const plausible = (e) => e && dist(e) <= 90;
+    const bare = show.name.replace(/\s+20\d\d$/, '');
+    const around = await getEventsAround(show.open);
+    const same = around.filter(e => e.name?.toLowerCase() === bare.toLowerCase());
+    let event = same.length ? same.reduce((a, b) => (dist(a) <= dist(b) ? a : b)) : null;
+    if (!plausible(event)) event = [findEvent(around, show.name), findEvent(around, bare)].find(plausible) || null;
     if (!event) {
-      // The data file suffixes a year onto a title the theatre repeats (A
-      // Christmas Story 2024); Spektrix has several events under the bare
-      // title, so the one whose first performance is nearest opening wins.
-      const around = await getEventsAround(show.open);
-      const bare = show.name.replace(/\s+20\d\d$/, '').toLowerCase();
-      const same = around.filter(e => e.name?.toLowerCase() === bare);
-      const dist = (e) => Math.abs(Date.parse((e.firstInstanceDateTime || '').slice(0, 10) || '1970-01-01') - Date.parse(show.open));
-      event = same.length ? same.reduce((a, b) => (dist(a) <= dist(b) ? a : b)) : findEvent(around, show.name);
+      const events = await getEvents();
+      event = [findEvent(events, show.name), findEvent(events, bare)].find(plausible) || null;
     }
-    if (!event) return NextResponse.json({ error: 'Event not found', name }, { status: 404 });
+    if (!event) return NextResponse.json({ error: 'Event not found', name, candidates: around.map(e => e.name) }, { status: 404 });
 
     // Run window and capacity.
     let cap = show.cap, close = null, capSource = 'file';
