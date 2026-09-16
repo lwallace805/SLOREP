@@ -57,17 +57,30 @@ async function fetchPage(url) {
   }
 }
 
-const cachedLeg = (eventId, scanFrom, scanTo, includeComps) =>
-  unstable_cache(
-    async () => {
-      const base = `https://system.spektrix.com/${process.env.SPEKTRIX_CLIENT_NAME}/api/v3`;
-      const scan = await scanOrders({ eventId, scanFrom, scanTo, base, fetchPage, includeComps, deadline: Date.now() + LEG_BUDGET_MS });
-      // Only the parts the series needs; the cache entry stays small.
-      return { byDay: scan.byDay, complete: scan.complete, incompleteWindows: scan.incompleteWindows, compTickets: scan.compTickets };
-    },
-    ['history-fill', 'v3', eventId, scanFrom, scanTo, includeComps ? 'comps' : 'paid'],
-    { revalidate: SCAN_TTL_SECONDS, tags: ['history-fill'] },
-  )();
+// An incomplete leg is not cached: throwing out of the cached function stores
+// nothing, so the next call retries the window that timed out instead of
+// serving the hole for a quarter of an hour. The partial still comes back
+// for this call, carried on the error.
+class IncompleteLeg extends Error { constructor(leg) { super('incomplete leg'); this.leg = leg; } }
+const cachedLeg = async (eventId, scanFrom, scanTo, includeComps) => {
+  try {
+    return await unstable_cache(
+      async () => {
+        const base = `https://system.spektrix.com/${process.env.SPEKTRIX_CLIENT_NAME}/api/v3`;
+        const scan = await scanOrders({ eventId, scanFrom, scanTo, base, fetchPage, includeComps, deadline: Date.now() + LEG_BUDGET_MS });
+        // Only the parts the series needs; the cache entry stays small.
+        const leg = { byDay: scan.byDay, complete: scan.complete, incompleteWindows: scan.incompleteWindows, compTickets: scan.compTickets };
+        if (!scan.complete) throw new IncompleteLeg(leg);
+        return leg;
+      },
+      ['history-fill', 'v3', eventId, scanFrom, scanTo, includeComps ? 'comps' : 'paid'],
+      { revalidate: SCAN_TTL_SECONDS, tags: ['history-fill'] },
+    )();
+  } catch (err) {
+    if (err instanceof IncompleteLeg) return err.leg;
+    throw err;
+  }
+};
 
 export async function GET(request) {
   const started = Date.now();
