@@ -57,18 +57,28 @@ const CATEGORIES = {
  */
 const PRACTICAL_MAX_FILL = 0.90;
 
-const PACE_CENTER = { comedy: 0.905, drama: 0.953, revue: 0.910, ubu: 0.787 };
-// book_musical and holiday have too few completed shows to fit their own.
-const PACE_CENTER_DEFAULT = 0.852;
+// Refitted on the data file rebuilt from the order scan (all seats). On the
+// old export the factors ran 0.79 to 0.95, which was the estimate correcting
+// for peers measured on a different basis from the show being projected; on
+// one basis the raw estimate is centred within half a percent.
+const PACE_CENTER = {
+  book_musical: 0.998,
+  comedy: 0.994,
+  drama: 0.988,
+  holiday: 1.002,
+  revue: 0.998,
+  ubu: 0.998,
+};
+const PACE_CENTER_DEFAULT = 0.995;
 
 // [maxD, q10, q90] - first row whose maxD covers d wins. 80% interval,
 // as a multiple of the centered point estimate.
 const PACE_BANDS = [
-  [-16, 0.401, 2.342],
-  [-8,  0.515, 1.825],
-  [-4,  0.579, 1.729],
-  [-2,  0.653, 1.648],
-  [0,   0.753, 1.417],
+  [-16, 0.757, 1.463],
+  [-8,  0.796, 1.462],
+  [-4,  0.775, 1.382],
+  [-2,  0.840, 1.308],
+  [0,   0.865, 1.207],
 ];
 function paceBand(d) {
   for (const [maxD, lo, hi] of PACE_BANDS) if (d <= maxD) return [lo, hi];
@@ -161,11 +171,13 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
   // Per show: true when the order scan behind the gap fill came back short, so
   // the stretch between the export and today is understated rather than measured.
   const [gapPartial, setGapPartial] = useState({});
-  // Comps off by default here, unlike the sales views. The peer series this
-  // curve is measured against are net paid, and the projection calibration was
-  // fitted on that basis, so net paid is the comparable figure. Turning comps on
-  // answers the occupancy question instead.
-  const [withComps, setWithComps] = useState(false);
+  // All seats by default, the same basis as the sales views, the season rail,
+  // and every peer series in the data file, which is rebuilt from the order
+  // scan with comps included (scripts/rebuild-pacing-data.mjs). Net paid was
+  // the default while the peer series came from an export whose basis turned
+  // out to match neither; measuring the current show one way against peers
+  // measured another put it a hundred-odd seats behind curves it was on.
+  const [withComps, setWithComps] = useState(true);
   const [liveUpdatedAt, setLiveUpdatedAt] = useState(
     Object.keys(initialLiveData).length ? new Date() : null
   );
