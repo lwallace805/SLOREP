@@ -7,7 +7,9 @@ import {
 } from "recharts";
 
 import { DATA } from '@/data/pacingData';
-import { isOnSale, statusOf, currentShowName, pacificToday, daysFromOpen, closeDateFor } from '@/lib/showStatus';
+import { INSTANCE_DATA } from '@/data/instanceData';
+import { isOnSale, statusOf, currentShowName, pacificToday, daysFromOpen, closeDateFor, addDays } from '@/lib/showStatus';
+import { buildAxis, posOfDay, dayAtPos } from '@/lib/campaignAxis';
 import TicketMixBar from './TicketMixBar';
 
 const CATEGORIES = {
@@ -88,22 +90,8 @@ function paceBand(d) {
 const RECENT_SEASONS = new Set(["24-25", "25-26"]);
 
 /**
- * Where a show is in its campaign, on one axis every show can share.
- *
- * Before opening the position is the day from opening, as before: the
- * marketing window is calendar-driven (subscriber allocation, single tickets
- * on sale, the final push), so day -30 means the same thing for every run.
- *
- * After opening it is the percent of the run elapsed. Runs here range from a
- * two-weekend play (day +9) to a five-weekend musical (day +30), and a show
- * four days into the long run has sold through a seventh of its performances,
- * while the short one is nearly half done. Comparing both at "day +4" reads
- * the long run as behind simply for having more of its run still to sell.
- * Comparing at the same fraction of the run asks the question the dashboard
- * is for: at this point in the run, how full was the house for peers?
- *
- * Milestones follow the same convention: days before opening, then quarters of
- * the run. The position of day 0 is 0 on both scales.
+ * Milestones on the campaign axis (src/lib/campaignAxis.js): days before
+ * opening, then quarters of the run's performances. Day 0 is 0 on both scales.
  */
 const MILESTONE_PRE = [-180, -90, -60, -30, -15, -7, -3, -1, 0];
 const MILESTONE_POST = [25, 50, 75, 100];
@@ -111,17 +99,6 @@ const MILESTONE_BASE = [...MILESTONE_PRE, ...MILESTONE_POST];
 const CHART_X_MIN = -120, CHART_X_MAX = 100;
 const CHART_TICKS = [-120, -90, -60, -30, 0, 25, 50, 75, 100];
 
-const isPos = x => x > 0;
-/** Position on the campaign axis for a given day of a given show. */
-function posOfDay(show, d) {
-  if (d <= 0) return d;
-  return d / Math.max(1, show.runDays || 1) * 100;
-}
-/** The day of a given show that sits at a position on the campaign axis. */
-function dayAtPos(show, x) {
-  if (x <= 0) return x;
-  return Math.round(x / 100 * Math.max(1, show.runDays || 1));
-}
 function fmtPos(x) {
   if (x === 0) return "open";
   if (x < 0) return `${x}d`;
@@ -136,7 +113,7 @@ function fmtPos(x) {
  * counts at the "close" milestone rather than dropping out of the median.
  */
 function sampleAt(show, x, past) {
-  const d = dayAtPos(show, x);
+  const d = dayAtPos(show.axis, x);
   const series = show.series;
   if (!series?.length) return null;
   const last = series[series.length - 1];
@@ -465,8 +442,30 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     return Math.max(1, closeDay(show));
   };
 
+  /**
+   * Performance dates for a show, best source first: Spektrix's instance list
+   * when live data has been pulled, the list baked into the data file
+   * (scripts/fill-performances.mjs), then the per-performance export for the
+   * current season. The export's Million Dollar Quartet entry spans every
+   * revival since 2019, so only performances inside the run's window count.
+   * A show with none falls back to calendar days on the axis.
+   */
+  const perfsFor = (show) => {
+    const live = liveAdjusted[show.name]?.perfs;
+    if (Array.isArray(live) && live.length) return live;
+    if (Array.isArray(show.perfs) && show.perfs.length) return show.perfs;
+    const exported = INSTANCE_DATA.find(e => e.name === show.name)?.instances;
+    if (exported?.length) {
+      const to = addDays(show.open, 120);
+      const inRun = exported.map(i => i.dt).filter(dt => dt >= show.open && dt.slice(0, 10) <= to);
+      if (inRun.length) return inRun;
+    }
+    return null;
+  };
+
   const liveDATA = useMemo(() => DATA.map(show => {
     const series = getLiveSeries(show);
+    const axis = buildAxis({ open: show.open, perfs: perfsFor(show), runDays: runDaysOf(show) });
     // For a show still on sale the data file's `final` is not a final — it is
     // whatever had sold on the day of the last export. The Father's said 31,
     // frozen on 2026-06-01. Use the live count instead, and fall back to the
@@ -488,7 +487,8 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
         ? liveAdjusted[show.name].ceiling
         : null,
       playedCap: liveApplied[show.name] ? (liveAdjusted[show.name]?.playedCap ?? 0) : 0,
-      runDays: runDaysOf(show),
+      axis,
+      runDays: axis.runDays,
     };
   }), [liveAdjusted, liveApplied, gapSeries, gapPartial, onSaleNames, liveNames, runWindows]);
 
@@ -534,6 +534,12 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
 
   const currentToday = current.series[current.series.length - 1] || null;
 
+  // Peers placed by calendar share of run because no performance list is known
+  // for them. Their post-opening positions are approximate until
+  // scripts/fill-performances.mjs bakes their schedules into the data file.
+  const calendarPeers = useMemo(() => peers.filter(p => p.axis?.basis !== 'performances').map(p => p.name), [peers]);
+  const unitLabel = current.axis?.basis === 'performances' ? "performances played" : "run elapsed";
+
   // The last point of the series is only "today" if it actually is today. For a
   // show still on sale, today's day-number comes from the calendar; when live
   // data has not arrived, the newest point can be months behind it. Presenting
@@ -546,7 +552,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
 
   // Today's position on the campaign axis. Before opening it is the day
   // itself; after opening it is how far through the run the show is.
-  const todayPos = currentToday ? posOfDay(current, currentToday.d) : null;
+  const todayPos = currentToday ? posOfDay(current.axis, currentToday.d) : null;
 
   const dynamicMilestones = useMemo(() => {
     if (todayPos === null) return MILESTONE_BASE;
@@ -580,7 +586,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
       const projection = (cPt && peerMedPct && peerMedPct > 0 && x >= -30 && peerData.length >= MIN_PEERS)
         ? Math.round(cPt.c / (peerMedPct / 100)) : null;
       return {
-        x, d: cPt ? cPt.d : dayAtPos(current, x),
+        x, d: cPt ? cPt.d : dayAtPos(current.axis, x),
         currentTix: cPt ? cPt.c : null,
         currentCapPct: currentCapPctHere,
         peerMedTix, peerMedPct, peerMedCapPct,
@@ -597,7 +603,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     // Peers are read at today's position on the campaign axis: the same day
     // before opening, the same fraction of the run after it. If no peer has a
     // point there yet, step back along the axis until one does.
-    let x = posOfDay(current, d);
+    let x = posOfDay(current.axis, d);
     const peersAt = (pos) => peers.map(p => sampleAt(p, pos, isPast(p))).filter(Boolean);
     let peerVals = peersAt(x);
     while (!peerVals.length && x > -400) { x--; peerVals = peersAt(x); }
@@ -783,7 +789,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
               </div>
               <div style={{ fontSize: 10.5, color: "#7a7570", marginTop: 3 }}>
                 {headline.x > 0
-                  ? `% capacity vs peer median at ${Math.round(headline.x)}% of run`
+                  ? `% capacity vs peer median at ${Math.round(headline.x)}% of ${unitLabel}`
                   : "% capacity vs peer median, same day"}
               </div>
               {headline.delta != null ? (
@@ -867,7 +873,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
             <div>
               <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.11em", textTransform: "uppercase", color: "#7a7570" }}>Pacing curve</div>
               <div className="pd-serif" style={{ fontSize: 16, fontWeight: 600, marginTop: 2, color: "#1c1a18" }}>
-                {currentName} <span style={{ color: "#7a7570", fontWeight: 400, fontSize: 14 }}>vs peer median + 25–75th percentile band · % of capacity, by day before opening then % of run</span>
+                {currentName} <span style={{ color: "#7a7570", fontWeight: 400, fontSize: 14 }}>vs peer median + 25–75th percentile band · % of capacity, by day before opening then % of {unitLabel}</span>
               </div>
               {gapUnmeasured && (
                 <div style={{ marginTop: 6, fontSize: 11, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 6, padding: "5px 9px", display: "inline-block" }}>
@@ -908,8 +914,8 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                   labelFormatter={(x, payload) => {
                     const row = payload?.[0]?.payload;
                     if (x <= 0) return `${x}d from opening`;
-                    const day = row?.currentDay ?? dayAtPos(current, x);
-                    return `${Math.round(x)}% of run · day +${day} for ${currentName}`;
+                    const day = row?.currentDay ?? dayAtPos(current.axis, x);
+                    return `${Math.round(x)}% of ${unitLabel} · day +${day} for ${currentName}`;
                   }}
                   formatter={(v, n, item) => {
                     if (v == null) return ["—", n];
@@ -929,7 +935,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                   // the two labels print on top of each other. Draw one marker
                   // reading "Opening · today" instead of two overlapping ones.
                   const todayDay = onSale(current) ? (trueTodayD ?? todayD) : null;
-                  const todayLine = todayDay !== null ? posOfDay(current, todayDay) : null;
+                  const todayLine = todayDay !== null ? posOfDay(current.axis, todayDay) : null;
                   const sameDay = todayLine === 0;
                   return (
                     <>
@@ -953,6 +959,14 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
               </ComposedChart>
             </ResponsiveContainer>
           </div>
+          {(calendarPeers.length > 0 || current.axis?.basis !== 'performances') && (
+            <div style={{ margin: "6px 8px 0", fontSize: 11, color: "#7a7570" }}>
+              After opening, {current.axis?.basis === 'performances' ? `${currentName} is placed by performances played (${current.axis.n} in the run)` : `${currentName} is placed by calendar share of its ${current.runDays}-day run, as no performance list is known`}.
+              {calendarPeers.length > 0 && (
+                <> {calendarPeers.length === peers.length ? "Every peer" : `${calendarPeers.length} of ${peers.length} peers`} ({calendarPeers.join(", ")}) {calendarPeers.length === 1 ? "has" : "have"} no performance list and {calendarPeers.length === 1 ? "is" : "are"} placed by calendar share of run; <code style={{ fontSize: 10 }}>scripts/fill-performances.mjs</code> bakes schedules into the data file.</>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Milestone table */}
@@ -995,7 +1009,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                     {divider}
                     <tr className={isFuture ? "future" : isNow ? "now" : ""} style={{ opacity: lowConfidence ? 0.6 : 1 }}>
                       <td className="lbl" style={{ fontFamily: "'Inter', monospace" }}>
-                        {labelForPos(r.x, r.d)}{isNow ? " · today" : ""}
+                        {labelForPos(r.x, r.d, current.axis?.basis)}{isNow ? " · today" : ""}
                         {lowConfidence && <span title={`Only ${r.peerN} peer${r.peerN === 1 ? "" : "s"} at this milestone`} style={{ marginLeft: 6, fontSize: 10, color: "#b45309", background: "#fef3c7", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>low n</span>}
                       </td>
                       <td style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
@@ -1025,8 +1039,8 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
           </table>
           <div style={{ marginTop: 12, fontSize: 11, color: "#7a7570", lineHeight: 1.5 }}>
             <strong style={{ color: "#7a5b1c" }}>Caveat:</strong> Early milestones (−180, −90, −60) are dominated by subscriber seat allocations.
-            Single-ticket marketing response shows clearest from −60 days in. Post-opening rows compare each show at the same fraction of its own run
-            ({current.runDays ? `${current.runDays} days for ${currentName}` : "run length from Spektrix"}), so a two-weekend peer and a five-weekend one are read at the same point in their runs.
+            Single-ticket marketing response shows clearest from −60 days in. Post-opening rows compare each show at the same share of its own performances played
+            ({current.axis?.basis === 'performances' ? `${current.axis.n} performances over ${current.runDays} days for ${currentName}` : `calendar share of a ${current.runDays}-day run for ${currentName}, no performance list known`}), so a two-weekend peer and a five-weekend one are read at the same point in their runs.
           </div>
         </div>
 
@@ -1130,7 +1144,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
             <strong>Net paid tickets only.</strong> Comps excluded. Refunds netted from cumulative. Subscription bundles with $0 line items excluded; subscribers who allocate seats to specific instances at the per-show price are included.
           </div>
           <div style={{ marginBottom: 6 }}>
-            <strong>Peer median</strong>: across selected peer shows, the median share of capacity sold at the same point in the campaign. Before opening that is the same day from opening, since the marketing window runs on the calendar. After opening it is the same fraction of the run: a show four days into a thirty-day run is read against peers at 13% of their runs, not at their fourth day, so a two-weekend play and a five-weekend musical compare on how full the house was at the same stage. Everything on the curve, the delta card and the milestone table uses this one axis and is in percent of capacity, so a bigger house or a longer run does not read as ahead or behind on its own. <strong>Peer % of final (median)</strong> shows what fraction of their final total peers had sold by that point; useful as a pacing benchmark.
+            <strong>Peer median</strong>: across selected peer shows, the median share of capacity sold at the same point in the campaign. Before opening that is the same day from opening, since the marketing window runs on the calendar. After opening it is the same share of performances played: a show that has played three of fourteen performances is read against peers when they had played three fourteenths of theirs, not at the same calendar day, so a two-weekend play and a five-weekend musical compare on how full the house was at the same stage, and a Tuesday with no performance sits between the weekends on either side rather than on top of one. A show whose performance schedule is not known is placed by calendar share of its run instead, and the chart says so. Everything on the curve, the delta card and the milestone table uses this one axis and is in percent of capacity, so a bigger house or a longer run does not read as ahead or behind on its own. <strong>Peer % of final (median)</strong> shows what fraction of their final total peers had sold by that point; useful as a pacing benchmark.
           </div>
           <div style={{ marginBottom: 6 }}>
             <strong>Projected final (calibrated)</strong>: tickets sold so far divided by the median fraction-of-final peers had reached on this day — an extrapolation of how far ahead or behind peer pace the show is running — then scaled by a per-category centering factor, since the raw estimate runs about 15% hot. The range is an 80% confidence interval fitted by leave-one-out backtest over the 46 completed shows, and it narrows as opening approaches: roughly 40–234% of the point estimate at d−30, against 75–142% at d−1. Only shown inside d=−30 where the denominator is stable. The ceiling is the lower of what the run can still physically reach — seats in a performance that has already played cannot be sold — and 90% of capacity, which is where completed shows top out: none of the 46 finished above 96%.
@@ -1197,7 +1211,9 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                     ["Peers used", headline.peerN],
                     ["Current d", headline.d >= 0 ? `+${headline.d}` : headline.d],
                     ...(headline.x > 0 ? [
-                      ["Point in run", `${Math.round(headline.x)}% of ${current.runDays} days`],
+                      ["Point in run", current.axis?.basis === 'performances'
+                        ? `${Math.round(headline.x)}% of ${current.axis.n} performances`
+                        : `${Math.round(headline.x)}% of ${current.runDays} days`],
                     ] : []),
                   ].map(([lbl, val]) => (
                     <div key={lbl} style={{ display: "flex", justifyContent: "space-between" }}>
@@ -1275,15 +1291,14 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
   );
 }
 
-function labelForPos(x, d) {
+function labelForPos(x, d, basis) {
   if (x === 0) return "Opening night";
   if (x < 0) return `${Math.abs(x)} days before opening`;
   const dayNote = d != null ? ` (day +${d})` : "";
+  const unit = basis === 'performances' ? "performances played" : "run";
   if (x >= 100) return `Closing${dayNote}`;
-  if (x === 25) return `25% of run${dayNote}`;
-  if (x === 50) return `Halfway through run${dayNote}`;
-  if (x === 75) return `75% of run${dayNote}`;
-  return `${Math.round(x)}% of run${dayNote}`;
+  if (x === 50) return `Half of ${unit}${dayNote}`;
+  return `${Math.round(x)}% of ${unit}${dayNote}`;
 }
 
 function StatCard({ accent, label, value, sub, valueColor }) {

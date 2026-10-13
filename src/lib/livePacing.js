@@ -165,7 +165,7 @@ export async function getPerInstanceCounts(eventId, saleStartDate) {
 
 /**
  * Fetch the live current count for each show handed in.
- * Returns { [showName]: { d, c, cap } }
+ * Returns { [showName]: { d, c, cap, ceiling, playedCap, perfs } }
  *
  * @param {Array<{name, open, series}>} shows - shows to pull, already filtered
  */
@@ -210,7 +210,10 @@ export async function getLivePacingData(shows) {
       );
 
       const d = Math.round((pacificDateToUtcMs(today) - openUtcMs) / 86400000);
-      result[show.name] = { d, c: totalSold, cap: realCap, ceiling, playedCap };
+      // The performance list places the show on the campaign axis after
+      // opening (src/lib/campaignAxis.js): share of performances played.
+      const perfs = instances.map(i => i.dt);
+      result[show.name] = { d, c: totalSold, cap: realCap, ceiling, playedCap, perfs };
     } catch {
       // show falls back to static data
     }

@@ -18,6 +18,9 @@
  *           to the existing value when Spektrix no longer lists the run
  *   p       cumulative as a percent of final (of the live count, for a show
  *           still on sale), which is what the projection maths expects
+ *   perfs   the run's performance date-times from Spektrix, which place the
+ *           show on the campaign axis after opening (share of performances
+ *           played); kept from the file when Spektrix no longer lists the run
  *
  * name, cat, season and open are kept. Each show is one to four requests to
  * the deployed history-fill route, walked in 120-day legs, and one to the
@@ -50,18 +53,20 @@ async function getJson(path) {
 async function runWindow(show) {
   const first = show.series[0];
   const last = show.series[show.series.length - 1];
-  let cap = show.cap, close = null, source = 'file';
+  let cap = show.cap, close = null, source = 'file', perfs = show.perfs ?? null;
   try {
     const inst = await getJson(`/api/instances?name=${encodeURIComponent(show.name)}&open=${show.open}`);
     if (inst.instances?.length) {
       cap = inst.instances.reduce((s, i) => s + (i.cap || 0), 0);
       close = inst.instances[inst.instances.length - 1].dt.slice(0, 10);
+      perfs = inst.instances.map(i => i.dt);
       source = 'availability';
     } else if (inst.past?.instances?.length) {
       const seats = (inst.past.plan?.areas || []).reduce((s, a) => s + (a.capacity ?? a.seats ?? 0), 0);
       const live = inst.past.instances.filter(i => !i.cancelled);
       if (seats) cap = live.length * seats;
       close = live[live.length - 1].dt.slice(0, 10);
+      perfs = live.map(i => i.dt);
       source = seats ? 'plan' : 'file (plan unreadable)';
     }
   } catch (err) {
@@ -69,7 +74,7 @@ async function runWindow(show) {
   }
   if (!close) close = last.d > 0 ? addDays(show.open, last.d) : null;
   const closed = close != null && close < TODAY;
-  return { from: addDays(show.open, first.d), to: closed ? close : TODAY, closed, cap, capSource: source };
+  return { from: addDays(show.open, first.d), to: closed ? close : TODAY, closed, cap, capSource: source, perfs };
 }
 
 async function walk(show, from, to) {
@@ -111,7 +116,8 @@ for (const show of DATA) {
     for (const p of series) p.p = Math.round(p.c / denom * 1000) / 10;
     const complete = legs.every(l => l.complete);
     const problems = legs.flatMap(l => l.incompleteWindows || []);
-    entry = { name: show.name, cat: show.cat, season: show.season, open: show.open, cap: win.cap, final, inProgress: false, series };
+    entry = { name: show.name, cat: show.cat, season: show.season, open: show.open, cap: win.cap, final, inProgress: false, series,
+      ...(win.perfs?.length ? { perfs: win.perfs } : {}) };
     note = { name: show.name, closed: win.closed, scan: `${win.from}..${win.to}`, legs: legs.length, complete, problems,
       oldCap: show.cap, newCap: win.cap, capSource: win.capSource, oldFinal: show.final, newFinal: final, total };
     process.stderr.write(`${win.from}..${win.to} ${legs.length} leg(s) total ${total} cap ${win.cap} (${win.capSource})${complete ? '' : ' INCOMPLETE ' + JSON.stringify(problems)}\n`);
