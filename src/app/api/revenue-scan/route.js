@@ -101,13 +101,25 @@ function compactOrder(o) {
     const eventId = idOf(t?.event);
     if (!eventId) continue;
     const typeId = idOf(t?.type) || idOf(t?.ticketType);
-    const key = `${eventId}|${typeId}|${num(t?.originalPrice) === 0 ? 1 : 0}|${num(t?.total) === 0 ? 1 : 0}`;
+    const key = `${eventId}|${typeId}|${num(t?.originalPrice) === 0 ? 1 : 0}|${num(t?.total) === 0 ? 1 : 0}|${idOf(t?.offer)}`;
     const a = tix[key] || (tix[key] = [0, 0, 0, 0, 0]);
     a[0] += 1;
     a[1] += cents(t?.originalPrice);
     a[2] += cents(t?.price);
     a[3] += cents(t?.discount);
     a[4] += cents(t?.total);
+  }
+  // The season-ticket purchases on the order, by subscription product: how
+  // many, and whatever money fields the line carries.
+  const subs = {};
+  for (const s of o?.ticketSubscriptions || []) {
+    const key = idOf(s?.subscription) || idOf(s?.ticketSubscription) || idOf(s?.type) || idOf(s?.product) || 'unknown';
+    const a = subs[key] || (subs[key] = [0, 0, 0, 0, 0]);
+    a[0] += 1;
+    a[1] += cents(s?.originalPrice);
+    a[2] += cents(s?.price);
+    a[3] += cents(s?.discount);
+    a[4] += cents(s?.total);
   }
   return [
     o?.id || '',
@@ -116,6 +128,7 @@ function compactOrder(o) {
     day(o?.lastTransactionDate),
     (o?.ticketSubscriptions || []).length,
     tix,
+    subs,
   ];
 }
 
@@ -144,17 +157,18 @@ async function scanOneWindow(base, from, to, deadline) {
       if (id) { if (seen.has(id)) continue; seen.add(id); }
       fresh++;
       out.orders.push(compactOrder(o));
-      if (!out.shape && (o?.tickets || []).length) {
-        const t = o.tickets[0];
-        const s = (o.ticketSubscriptions || [])[0];
-        out.shape = {
-          type: keysOf(t?.type), ticketType: keysOf(t?.ticketType), offer: keysOf(t?.offer),
-          band: keysOf(t?.band), instance: keysOf(t?.instance),
-          ticketSubscription: keysOf(s),
-          ticketSubscriptionNested: s && typeof s === 'object'
-            ? Object.fromEntries(Object.entries(s).filter(([, v]) => v && typeof v === 'object').map(([k, v]) => [k, keysOf(v)]))
-            : null,
-        };
+      const sh = out.shape || (out.shape = {});
+      for (const t of o?.tickets || []) {
+        if (!sh.type && t?.type != null) sh.type = keysOf(t.type);
+        if (!sh.ticketType && t?.ticketType != null) sh.ticketType = keysOf(t.ticketType);
+        if (!sh.offer && t?.offer != null) sh.offer = keysOf(t.offer);
+      }
+      const sub = (o?.ticketSubscriptions || [])[0];
+      if (!sh.ticketSubscription && sub != null) {
+        sh.ticketSubscription = keysOf(sub);
+        sh.ticketSubscriptionNested = typeof sub === 'object'
+          ? Object.fromEntries(Object.entries(sub).filter(([, v]) => v && typeof v === 'object').map(([k, v]) => [k, Array.isArray(v) ? { array: v.length, item: keysOf(v[0]) } : keysOf(v)]))
+          : null;
       }
     }
     if (r.orders.length < PAGE_SIZE) { out.status = 'done'; return out; }
@@ -180,7 +194,7 @@ async function cachedWindow(base, from, to, deadline) {
         if (win.status !== 'done') throw new Incomplete(win);
         return win;
       },
-      ['revenue-scan', 'v1', from, to],
+      ['revenue-scan', 'v2', from, to],
       { revalidate: WINDOW_TTL_SECONDS, tags: ['revenue-scan'] },
     )();
   } catch (err) {
@@ -226,8 +240,19 @@ async function meta(searchParams) {
     const list = Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
     ticketTypes = list.map(t => ({ id: t?.id, name: t?.name }));
   } catch (err) { ticketTypes = { error: err.message }; }
+  // Ids the current listing no longer names (a retired ticket type, an offer),
+  // tried one at a time against each path given.
+  const lookups = {};
+  for (const [param, path] of [['types', 'ticket-types'], ['offers', 'offers'], ['subs', 'ticket-subscriptions']]) {
+    const want = (searchParams.get(param) || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 80);
+    if (!want.length) continue;
+    lookups[param] = await pool(want, 6, async (id) => {
+      try { const r = await spektrixGet(`/${path}/${id}`); return { id, name: r?.name ?? null, keys: keysOf(r) }; }
+      catch (err) { return { id, error: err.message }; }
+    });
+  }
   return NextResponse.json({
-    events, ticketTypes,
+    events, ticketTypes, lookups,
     compTypeIds: [...COMP_TYPE_IDS], groupTypeIds: [...GROUP_TYPE_IDS],
   });
 }
@@ -264,12 +289,13 @@ export async function GET(request) {
     // asked range, and sum.
     const seen = new Set();
     const agg = {};
+    const subAgg = {};
     let orders = 0, tickets = 0, before = 0, after = 0, utcDayDiffers = 0, undated = 0, subOrders = 0;
     let shape = null;
     const report = [];
     for (const s of scans) {
       let lateLocal = 0, lateUtc = 0;
-      for (const [id, local, utc, , subs, tix] of s.orders) {
+      for (const [id, local, utc, , subs, tix, subLines] of s.orders) {
         if (local > s.to) lateLocal++;
         if (utc > s.to) lateUtc++;
         if (id) { if (seen.has(id)) continue; seen.add(id); }
@@ -280,15 +306,19 @@ export async function GET(request) {
         if (utc && utc !== local) utcDayDiffers++;
         if (subs > 0) subOrders++;
         for (const [key, a] of Object.entries(tix)) {
-          const [eventId, typeId, o0, t0] = key.split('|');
+          const [eventId, typeId, o0, t0, offerId] = key.split('|');
           const ev = agg[eventId] || (agg[eventId] = {});
-          const k = `${typeId}|${subs > 0 ? 1 : 0}|${o0}|${t0}`;
+          const k = `${typeId}|${subs > 0 ? 1 : 0}|${o0}|${t0}|${offerId || ''}`;
           const b = ev[k] || (ev[k] = [0, 0, 0, 0, 0]);
           for (let i = 0; i < 5; i++) b[i] += a[i];
           tickets += a[0];
         }
+        for (const [key, a] of Object.entries(subLines || {})) {
+          const b = subAgg[key] || (subAgg[key] = [0, 0, 0, 0, 0]);
+          for (let i = 0; i < 5; i++) b[i] += a[i];
+        }
       }
-      if (!shape && s.shape) shape = s.shape;
+      if (s.shape) shape = { ...s.shape, ...(shape || {}) };
       report.push({ from: s.from, to: s.to, status: s.status, pages: s.pages, fetched: s.fetched, kept: s.orders.length, ...(debug ? { lateLocal, lateUtc } : {}) });
     }
     const incomplete = report.filter(w => w.status !== 'done').map(w => `${w.from}..${w.to}: ${w.status}`);
@@ -302,8 +332,11 @@ export async function GET(request) {
       // neighbouring call), and orders whose UTC day differs from the local
       // day they were bucketed on.
       outside: { before, after, undated, utcDayDiffers },
-      // agg[eventId]["typeId|sub|origZero|totalZero"] = [tickets, original, price, discount, total], money in cents.
+      // agg[eventId]["typeId|sub|origZero|totalZero|offerId"] = [tickets, original, price, discount, total], money in cents.
+      // sub = the order also carries a season-ticket purchase.
       agg,
+      // Season-ticket purchases by subscription product, same five figures.
+      subscriptions: subAgg,
       ...(debug ? { windows: report, shape } : {}),
       ms: Date.now() - started,
     });
