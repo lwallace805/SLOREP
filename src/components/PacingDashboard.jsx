@@ -86,8 +86,64 @@ function paceBand(d) {
 }
 
 const RECENT_SEASONS = new Set(["24-25", "25-26"]);
-const MILESTONE_BASE = [-180, -90, -60, -30, -15, -7, -3, -1, 0, 7, 14, 21];
-const MILESTONES = MILESTONE_BASE; // kept for compat
+
+/**
+ * Where a show is in its campaign, on one axis every show can share.
+ *
+ * Before opening the position is the day from opening, as before: the
+ * marketing window is calendar-driven (subscriber allocation, single tickets
+ * on sale, the final push), so day -30 means the same thing for every run.
+ *
+ * After opening it is the percent of the run elapsed. Runs here range from a
+ * two-weekend play (day +9) to a five-weekend musical (day +30), and a show
+ * four days into the long run has sold through a seventh of its performances,
+ * while the short one is nearly half done. Comparing both at "day +4" reads
+ * the long run as behind simply for having more of its run still to sell.
+ * Comparing at the same fraction of the run asks the question the dashboard
+ * is for: at this point in the run, how full was the house for peers?
+ *
+ * Milestones follow the same convention: days before opening, then quarters of
+ * the run. The position of day 0 is 0 on both scales.
+ */
+const MILESTONE_PRE = [-180, -90, -60, -30, -15, -7, -3, -1, 0];
+const MILESTONE_POST = [25, 50, 75, 100];
+const MILESTONE_BASE = [...MILESTONE_PRE, ...MILESTONE_POST];
+const CHART_X_MIN = -120, CHART_X_MAX = 100;
+const CHART_TICKS = [-120, -90, -60, -30, 0, 25, 50, 75, 100];
+
+const isPos = x => x > 0;
+/** Position on the campaign axis for a given day of a given show. */
+function posOfDay(show, d) {
+  if (d <= 0) return d;
+  return d / Math.max(1, show.runDays || 1) * 100;
+}
+/** The day of a given show that sits at a position on the campaign axis. */
+function dayAtPos(show, x) {
+  if (x <= 0) return x;
+  return Math.round(x / 100 * Math.max(1, show.runDays || 1));
+}
+function fmtPos(x) {
+  if (x === 0) return "open";
+  if (x < 0) return `${x}d`;
+  if (x >= 100) return "close";
+  return `${Math.round(x)}%`;
+}
+
+/**
+ * The show's cumulative point at a position on the campaign axis, with the
+ * share of capacity it represents. A closed run holds its final past the last
+ * recorded sale, so a peer whose last order landed before closing night still
+ * counts at the "close" milestone rather than dropping out of the median.
+ */
+function sampleAt(show, x, past) {
+  const d = dayAtPos(show, x);
+  const series = show.series;
+  if (!series?.length) return null;
+  const last = series[series.length - 1];
+  const pt = (past && d > last.d) ? last : lookupAt(series, d);
+  if (!pt) return null;
+  return { ...pt, d, capPct: show.cap > 0 ? pt.c / show.cap * 100 : null };
+}
 
 function lookupAt(series, d) {
   if (!series.length) return null;
@@ -395,6 +451,20 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     return applied;
   }, [liveAdjusted, liveNames]);
 
+  /**
+   * Days from opening to closing night, which sets the post-opening scale of
+   * the campaign axis. Spektrix's window when it has one; otherwise a finished
+   * run's series ends on its last sale, which for every completed show in the
+   * data file is closing weekend (the mainstage runs end at d+9 to d+37, the
+   * staged readings at d+1); otherwise the category's assumed run.
+   */
+  const runDaysOf = (show) => {
+    if (runWindows[show.name?.toLowerCase()]?.close) return Math.max(1, closeDay(show));
+    const last = show.series?.[show.series.length - 1]?.d ?? 0;
+    if (isPast(show) && last > 0) return last;
+    return Math.max(1, closeDay(show));
+  };
+
   const liveDATA = useMemo(() => DATA.map(show => {
     const series = getLiveSeries(show);
     // For a show still on sale the data file's `final` is not a final — it is
@@ -418,8 +488,9 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
         ? liveAdjusted[show.name].ceiling
         : null,
       playedCap: liveApplied[show.name] ? (liveAdjusted[show.name]?.playedCap ?? 0) : 0,
+      runDays: runDaysOf(show),
     };
-  }), [liveAdjusted, liveApplied, gapSeries, gapPartial, onSaleNames, liveNames]);
+  }), [liveAdjusted, liveApplied, gapSeries, gapPartial, onSaleNames, liveNames, runWindows]);
 
   const current = liveDATA.find(s => s.name === currentName) || liveDATA[0];
 
@@ -473,62 +544,70 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     ? trueTodayD - currentToday.d : 0;
   const isStale = staleBy > 1;
 
+  // Today's position on the campaign axis. Before opening it is the day
+  // itself; after opening it is how far through the run the show is.
+  const todayPos = currentToday ? posOfDay(current, currentToday.d) : null;
+
   const dynamicMilestones = useMemo(() => {
-    if (!currentToday) return MILESTONE_BASE;
-    const td = currentToday.d;
-    if (MILESTONE_BASE.includes(td)) return MILESTONE_BASE;
-    return [...MILESTONE_BASE, td].sort((a, b) => a - b);
-  }, [currentToday]);
+    if (todayPos === null) return MILESTONE_BASE;
+    if (MILESTONE_BASE.some(x => Math.abs(x - todayPos) < 0.05)) return MILESTONE_BASE;
+    return [...MILESTONE_BASE, todayPos].sort((a, b) => a - b);
+  }, [todayPos]);
 
   const milestoneRows = useMemo(() => {
-    return dynamicMilestones.map(d => {
-      const cPt = lookupAt(current.series, d, true);
+    return dynamicMilestones.map(x => {
+      const cPt = sampleAt(current, x, isPast(current));
       const peerData = peers.map(p => {
-        const pt = lookupAt(p.series, d, true);
+        const pt = sampleAt(p, x, isPast(p));
         // A peer still on sale has no final to contribute to the benchmark.
-        return pt ? { tix: pt.c, pct: pt.p, name: p.name, final: onSale(p) ? null : p.final, cap: p.cap, capPct: (pt.c / p.cap) * 100 } : null;
+        return pt ? { tix: pt.c, pct: pt.p, name: p.name, final: onSale(p) ? null : p.final, cap: p.cap, capPct: pt.capPct } : null;
       }).filter(Boolean);
       const peerTix = peerData.map(v => v.tix);
       const peerPct = peerData.map(v => v.pct);
       const peerFinals = peerData.map(v => v.final).filter(v => v != null);
-      const peerCapPct = peerData.map(v => v.capPct);
+      const peerCapPct = peerData.map(v => v.capPct).filter(v => v !== null);
       const peerMedTix = median(peerTix);
       const peerMedPct = median(peerPct);
       const peerMedFinal = median(peerFinals);
       const peerMedCapPct = median(peerCapPct);
       const MIN_PEERS = 3;
-      // Delta: compare % of capacity (not raw tickets) so shows with different house sizes are comparable
-      const currentCapPctHere = cPt && current.cap ? (cPt.c / current.cap * 100) : null;
+      // Delta: compare % of capacity (not raw tickets) so shows with different
+      // house sizes are comparable, sampled at the same point in the run so
+      // shows with different run lengths are too.
+      const currentCapPctHere = cPt ? cPt.capPct : null;
       const delta = (currentCapPctHere !== null && peerMedCapPct !== null && peerData.length >= MIN_PEERS)
         ? currentCapPctHere - peerMedCapPct : null;
-      const projection = (cPt && peerMedPct && peerMedPct > 0 && d >= -30 && peerData.length >= MIN_PEERS)
+      const projection = (cPt && peerMedPct && peerMedPct > 0 && x >= -30 && peerData.length >= MIN_PEERS)
         ? Math.round(cPt.c / (peerMedPct / 100)) : null;
       return {
-        d, currentTix: cPt ? cPt.c : null,
-        currentCapPct: cPt && current.cap ? (cPt.c / current.cap) * 100 : null,
+        x, d: cPt ? cPt.d : dayAtPos(current, x),
+        currentTix: cPt ? cPt.c : null,
+        currentCapPct: currentCapPctHere,
         peerMedTix, peerMedPct, peerMedCapPct,
-        peerMin: peerTix.length ? Math.min(...peerTix) : null,
-        peerMax: peerTix.length ? Math.max(...peerTix) : null,
+        peerMinCapPct: peerCapPct.length ? Math.min(...peerCapPct) : null,
+        peerMaxCapPct: peerCapPct.length ? Math.max(...peerCapPct) : null,
         peerN: peerData.length, delta, projection, peerMedFinal,
       };
     });
-  }, [current, peers, dynamicMilestones]);
+  }, [current, peers, dynamicMilestones, onSaleNames]);
 
   const headline = useMemo(() => {
     if (!currentToday || !peers.length) return null;
-    let d = currentToday.d;
-    let peerVals = peers.map(p => lookupAt(p.series, d)).filter(Boolean);
-    while (!peerVals.length && d > -400) { d--; peerVals = peers.map(p => lookupAt(p.series, d)).filter(Boolean); }
+    const d = currentToday.d;
+    // Peers are read at today's position on the campaign axis: the same day
+    // before opening, the same fraction of the run after it. If no peer has a
+    // point there yet, step back along the axis until one does.
+    let x = posOfDay(current, d);
+    const peersAt = (pos) => peers.map(p => sampleAt(p, pos, isPast(p))).filter(Boolean);
+    let peerVals = peersAt(x);
+    while (!peerVals.length && x > -400) { x--; peerVals = peersAt(x); }
     if (!peerVals.length) return null;
     const cPt = lookupAt(current.series, d);
     if (!cPt) return null;
     const peerMed = median(peerVals.map(v => v.c));
     const peerMedPct = median(peerVals.map(v => v.p));
     // Cap-based delta: current % of capacity minus peer median % of capacity
-    const peerWithCap = peers.map(p => {
-      const pt = lookupAt(p.series, d);
-      return pt && p.cap ? pt.c / p.cap * 100 : null;
-    }).filter(v => v !== null);
+    const peerWithCap = peerVals.map(v => v.capPct).filter(v => v !== null);
     const peerMedCapPct = median(peerWithCap);
     const currentCapPctNow = current.cap ? cPt.c / current.cap * 100 : null;
     const delta = (currentCapPctNow !== null && peerMedCapPct !== null && peerVals.length >= 3)
@@ -561,32 +640,35 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
     const projectionHigh = calibrated != null ? Math.min(reachable, Math.round(calibrated * bandHi)) : null;
     const lowIsClamped = rawLow != null && rawLow < cPt.c;
     // Where this show sits against peer pace right now, as a ratio of percent of
-    // capacity sold at the same day. 1.00 is exactly on peer pace.
+    // capacity sold at the same point in the run. 1.00 is exactly on peer pace.
     const paceIndex = (currentCapPctNow !== null && peerMedCapPct) ? currentCapPctNow / peerMedCapPct : null;
     const peerMedFinal = median(closedPeers.map(p => p.final));
-    return { d, currentTix: cPt.c, peerMed, delta, projection, projectionLow, projectionHigh, peerMedFinal,
+    return { d, x, currentTix: cPt.c, peerMed, peerMedCapPct, delta, projection, projectionLow, projectionHigh, peerMedFinal,
              peerN: peerVals.length, centre, bandLo, bandHi, paceIndex, lowIsClamped,
              reachable, capLostToPlayedHouses: Math.max(0, cap - reachable) };
-  }, [currentToday, peers, closedPeers, current]);
+  }, [currentToday, peers, closedPeers, current, onSaleNames]);
 
+  // Everything on the chart is percent of capacity against the campaign axis:
+  // one point per day before opening, one per percent of the run after it.
   const chartData = useMemo(() => {
-    const xMin = -120, xMax = 28;
     const out = [];
-    for (let d = xMin; d <= xMax; d++) {
-      const row = { d };
-      const cPt = lookupAt(current.series, d);
-      if (cPt !== null) row.current = cPt.c;
-      const peerVals = peers.map(p => lookupAt(p.series, d)).filter(Boolean).map(v => v.c);
+    const currentPast = isPast(current);
+    for (let x = CHART_X_MIN; x <= CHART_X_MAX; x++) {
+      const row = { x };
+      const cPt = sampleAt(current, x, currentPast);
+      if (cPt?.capPct != null) { row.current = cPt.capPct; row.currentDay = cPt.d; row.currentTix = cPt.c; }
+      const peerVals = peers.map(p => sampleAt(p, x, isPast(p))).map(v => v?.capPct).filter(v => v != null);
       if (peerVals.length) {
         row.peerMed = median(peerVals);
         row.peerP25 = percentile(peerVals, 0.25);
         row.peerP75 = percentile(peerVals, 0.75);
         row.peerBand = row.peerP75 - row.peerP25;
+        row.peerN = peerVals.length;
       }
       out.push(row);
     }
     return out;
-  }, [current, peers]);
+  }, [current, peers, onSaleNames]);
 
   const todayD = currentToday ? currentToday.d : null;
   const toggleCat = c => { const n = new Set(peerCats); n.has(c) ? n.delete(c) : n.add(c); setPeerCats(n); };
@@ -699,7 +781,11 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
               <div className="pd-serif" style={{ fontSize: 26, fontWeight: 700, lineHeight: 1, paddingTop: 3, color: "#1c1a18" }}>
                 {headline.delta != null ? (headline.delta > 0 ? "+" : "") + headline.delta.toFixed(1) + "pp" : "—"}
               </div>
-              <div style={{ fontSize: 10.5, color: "#7a7570", marginTop: 3 }}>% capacity vs peer median</div>
+              <div style={{ fontSize: 10.5, color: "#7a7570", marginTop: 3 }}>
+                {headline.x > 0
+                  ? `% capacity vs peer median at ${Math.round(headline.x)}% of run`
+                  : "% capacity vs peer median, same day"}
+              </div>
               {headline.delta != null ? (
                 <div style={{
                   display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10.5, fontWeight: 600, marginTop: 6, padding: "3px 8px", borderRadius: 100,
@@ -781,7 +867,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
             <div>
               <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.11em", textTransform: "uppercase", color: "#7a7570" }}>Pacing curve</div>
               <div className="pd-serif" style={{ fontSize: 16, fontWeight: 600, marginTop: 2, color: "#1c1a18" }}>
-                {currentName} <span style={{ color: "#7a7570", fontWeight: 400, fontSize: 14 }}>vs peer median + 25–75th percentile band</span>
+                {currentName} <span style={{ color: "#7a7570", fontWeight: 400, fontSize: 14 }}>vs peer median + 25–75th percentile band · % of capacity, by day before opening then % of run</span>
               </div>
               {gapUnmeasured && (
                 <div style={{ marginTop: 6, fontSize: 11, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 6, padding: "5px 9px", display: "inline-block" }}>
@@ -811,28 +897,39 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ top: 12, right: 24, bottom: 28, left: 12 }}>
                 <CartesianGrid stroke="#f0ebe4" strokeDasharray="3 3" />
-                <XAxis dataKey="d" type="number" domain={[-120, 28]}
+                <XAxis dataKey="x" type="number" domain={[CHART_X_MIN, CHART_X_MAX]} ticks={CHART_TICKS}
                   tick={{ fontFamily: "'Inter', sans-serif", fontSize: 10, fill: "#7a7570" }}
-                  tickFormatter={v => v === 0 ? "open" : (v > 0 ? `+${v}d` : `${v}d`)}
+                  tickFormatter={fmtPos}
                   stroke="#e4ddd5" />
-                <YAxis tick={{ fontFamily: "'Inter', sans-serif", fontSize: 10, fill: "#7a7570" }} stroke="#e4ddd5" />
+                <YAxis tick={{ fontFamily: "'Inter', sans-serif", fontSize: 10, fill: "#7a7570" }} stroke="#e4ddd5"
+                  tickFormatter={v => `${v}%`} />
                 <Tooltip
                   contentStyle={{ background: "#ffffff", border: "1px solid #e4ddd5", borderRadius: 6, fontSize: 12, fontFamily: "'Inter', sans-serif" }}
-                  labelFormatter={d => `${d > 0 ? "+" : ""}${d}d from opening`}
-                  formatter={(v, n) => {
+                  labelFormatter={(x, payload) => {
+                    const row = payload?.[0]?.payload;
+                    if (x <= 0) return `${x}d from opening`;
+                    const day = row?.currentDay ?? dayAtPos(current, x);
+                    return `${Math.round(x)}% of run · day +${day} for ${currentName}`;
+                  }}
+                  formatter={(v, n, item) => {
                     if (v == null) return ["—", n];
                     const labels = { current: currentName, peerMed: "Peer median", peerP25: "25th pct", peerP75: "75th pct", peerBand: "75th pct" };
-                    return [Math.round(v).toLocaleString(), labels[n] || n];
+                    // The band series is stacked on the 25th percentile, so its
+                    // own value is the band's width; report the 75th it reaches.
+                    const val = n === "peerBand" ? (item?.payload?.peerP75 ?? v) : v;
+                    const tix = n === "current" && item?.payload?.currentTix != null ? ` · ${item.payload.currentTix.toLocaleString()} tickets` : "";
+                    return [`${val.toFixed(1)}% of capacity${tix}`, labels[n] || n];
                   }}
                 />
-                {MILESTONE_BASE.map(d => (
-                  <ReferenceLine key={d} x={d} stroke="#e4ddd5" strokeDasharray="2 4" />
+                {MILESTONE_BASE.map(x => (
+                  <ReferenceLine key={x} x={x} stroke="#e4ddd5" strokeDasharray="2 4" />
                 ))}
                 {(() => {
                   // On opening night the Today line lands exactly on Opening and
                   // the two labels print on top of each other. Draw one marker
                   // reading "Opening · today" instead of two overlapping ones.
-                  const todayLine = onSale(current) ? (trueTodayD ?? todayD) : null;
+                  const todayDay = onSale(current) ? (trueTodayD ?? todayD) : null;
+                  const todayLine = todayDay !== null ? posOfDay(current, todayDay) : null;
                   const sameDay = todayLine === 0;
                   return (
                     <>
@@ -869,22 +966,22 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
           <table className="ms">
             <thead>
               <tr>
-                <th className="lbl">Days from opening</th>
+                <th className="lbl">Point in campaign</th>
                 <th>This show<br/><span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#bbb1a0" }}>tickets</span></th>
                 <th>% of capacity</th>
-                <th>Peer median<br/><span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#bbb1a0" }}>tickets</span></th>
+                <th>Peer median<br/><span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#bbb1a0" }}>% of capacity</span></th>
                 <th>Peer % of final<br/><span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#bbb1a0" }}>median</span></th>
                 <th>Δ cap% vs peers</th>
-                <th>Peer range</th>
+                <th>Peer range<br/><span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#bbb1a0" }}>% of capacity</span></th>
               </tr>
             </thead>
             <tbody>
               {milestoneRows.map((r, ri) => {
-                const isFuture = r.currentTix === null && todayD !== null && todayD < r.d;
+                const isFuture = r.currentTix === null && todayPos !== null && todayPos < r.x;
                 const lastReachedMs = [...milestoneRows].filter(x => x.currentTix !== null).pop();
                 const isNow = onSale(current) && r === lastReachedMs;
                 const lowConfidence = r.peerN < 3 && !isFuture;
-                const divider = r.d === 7 ? (
+                const divider = (r.x > 0 && !(milestoneRows[ri - 1]?.x > 0)) ? (
                   <tr key="divider-opening">
                     <td colSpan={7} style={{ padding: 0, borderBottom: "2px solid #e4ddd5", borderTop: "2px solid #e4ddd5" }}>
                       <div style={{ padding: "5px 12px", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: "#7a7570", fontWeight: 600, background: "#f7f2eb" }}>
@@ -894,11 +991,11 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                   </tr>
                 ) : null;
                 return (
-                  <React.Fragment key={r.d}>
+                  <React.Fragment key={r.x}>
                     {divider}
                     <tr className={isFuture ? "future" : isNow ? "now" : ""} style={{ opacity: lowConfidence ? 0.6 : 1 }}>
                       <td className="lbl" style={{ fontFamily: "'Inter', monospace" }}>
-                        {labelForDay(r.d)}{isNow ? " · today" : ""}
+                        {labelForPos(r.x, r.d)}{isNow ? " · today" : ""}
                         {lowConfidence && <span title={`Only ${r.peerN} peer${r.peerN === 1 ? "" : "s"} at this milestone`} style={{ marginLeft: 6, fontSize: 10, color: "#b45309", background: "#fef3c7", padding: "1px 5px", borderRadius: 3, fontWeight: 600 }}>low n</span>}
                       </td>
                       <td style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
@@ -907,7 +1004,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                       <td style={{ color: "#7a7570", fontVariantNumeric: "tabular-nums" }}>
                         {r.currentCapPct !== null ? r.currentCapPct.toFixed(1) + "%" : "—"}
                       </td>
-                      <td style={{ fontVariantNumeric: "tabular-nums" }}>{r.peerMedTix !== null ? Math.round(r.peerMedTix).toLocaleString() : "—"}</td>
+                      <td style={{ fontVariantNumeric: "tabular-nums" }}>{r.peerMedCapPct !== null ? r.peerMedCapPct.toFixed(1) + "%" : "—"}</td>
                       <td style={{ color: "#7a7570", fontVariantNumeric: "tabular-nums" }}>
                         {r.peerMedPct !== null ? r.peerMedPct.toFixed(1) + "%" : "—"}
                       </td>
@@ -918,7 +1015,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                         {r.delta !== null ? (r.delta > 0 ? "+" : "") + r.delta.toFixed(1) + "pp" : "—"}
                       </td>
                       <td style={{ color: "#7a7570", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
-                        {r.peerMin !== null ? `${Math.round(r.peerMin).toLocaleString()}–${Math.round(r.peerMax).toLocaleString()}` : "—"}
+                        {r.peerMinCapPct !== null ? `${r.peerMinCapPct.toFixed(0)}–${r.peerMaxCapPct.toFixed(0)}%` : "—"}
                       </td>
                     </tr>
                   </React.Fragment>
@@ -928,7 +1025,8 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
           </table>
           <div style={{ marginTop: 12, fontSize: 11, color: "#7a7570", lineHeight: 1.5 }}>
             <strong style={{ color: "#7a5b1c" }}>Caveat:</strong> Early milestones (−180, −90, −60) are dominated by subscriber seat allocations.
-            Single-ticket marketing response shows clearest from −60 days in.
+            Single-ticket marketing response shows clearest from −60 days in. Post-opening rows compare each show at the same fraction of its own run
+            ({current.runDays ? `${current.runDays} days for ${currentName}` : "run length from Spektrix"}), so a two-weekend peer and a five-weekend one are read at the same point in their runs.
           </div>
         </div>
 
@@ -1032,7 +1130,7 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
             <strong>Net paid tickets only.</strong> Comps excluded. Refunds netted from cumulative. Subscription bundles with $0 line items excluded; subscribers who allocate seats to specific instances at the per-show price are included.
           </div>
           <div style={{ marginBottom: 6 }}>
-            <strong>Peer median</strong>: across selected peer shows, the median cumulative tickets at the same day from opening. <strong>Peer % of final (median)</strong> shows what fraction of their final total peers had sold by that day; useful as a pacing benchmark.
+            <strong>Peer median</strong>: across selected peer shows, the median share of capacity sold at the same point in the campaign. Before opening that is the same day from opening, since the marketing window runs on the calendar. After opening it is the same fraction of the run: a show four days into a thirty-day run is read against peers at 13% of their runs, not at their fourth day, so a two-weekend play and a five-weekend musical compare on how full the house was at the same stage. Everything on the curve, the delta card and the milestone table uses this one axis and is in percent of capacity, so a bigger house or a longer run does not read as ahead or behind on its own. <strong>Peer % of final (median)</strong> shows what fraction of their final total peers had sold by that point; useful as a pacing benchmark.
           </div>
           <div style={{ marginBottom: 6 }}>
             <strong>Projected final (calibrated)</strong>: tickets sold so far divided by the median fraction-of-final peers had reached on this day — an extrapolation of how far ahead or behind peer pace the show is running — then scaled by a per-category centering factor, since the raw estimate runs about 15% hot. The range is an 80% confidence interval fitted by leave-one-out backtest over the 46 completed shows, and it narrows as opening approaches: roughly 40–234% of the point estimate at d−30, against 75–142% at d−1. Only shown inside d=−30 where the denominator is stable. The ceiling is the lower of what the run can still physically reach — seats in a performance that has already played cannot be sold — and 90% of capacity, which is where completed shows top out: none of the 46 finished above 96%.
@@ -1098,6 +1196,9 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
                     ["Category centering", `\u00d7${headline.centre.toFixed(2)}`],
                     ["Peers used", headline.peerN],
                     ["Current d", headline.d >= 0 ? `+${headline.d}` : headline.d],
+                    ...(headline.x > 0 ? [
+                      ["Point in run", `${Math.round(headline.x)}% of ${current.runDays} days`],
+                    ] : []),
                   ].map(([lbl, val]) => (
                     <div key={lbl} style={{ display: "flex", justifyContent: "space-between" }}>
                       <span style={{ color: "#7a7570" }}>{lbl}</span>
@@ -1174,13 +1275,15 @@ export default function PacingDashboard({ initialLiveData = {}, runWindows = {} 
   );
 }
 
-function labelForDay(d) {
-  if (d === 0) return "Opening night";
-  if (d < 0) return `${Math.abs(d)} days before opening`;
-  if (d === 7)  return "+7 days (1 week in)";
-  if (d === 14) return "+14 days (2 weeks in)";
-  if (d === 21) return "+21 days (3 weeks in)";
-  return `+${d} days into run`;
+function labelForPos(x, d) {
+  if (x === 0) return "Opening night";
+  if (x < 0) return `${Math.abs(x)} days before opening`;
+  const dayNote = d != null ? ` (day +${d})` : "";
+  if (x >= 100) return `Closing${dayNote}`;
+  if (x === 25) return `25% of run${dayNote}`;
+  if (x === 50) return `Halfway through run${dayNote}`;
+  if (x === 75) return `75% of run${dayNote}`;
+  return `${Math.round(x)}% of run${dayNote}`;
 }
 
 function StatCard({ accent, label, value, sub, valueColor }) {
