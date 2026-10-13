@@ -28,8 +28,9 @@
  *  - It reads the order's tickets as they stand now, so the figures are net of
  *    returns and exchanges.
  *
- * The answer carries aggregates only: event id, ticket type id, counts and
- * sums. No order ids and no customer fields leave the function.
+ * The answer carries aggregates only: event id, ticket type id, offer id,
+ * subscription product name, counts and sums. No order ids and no customer
+ * fields leave the function.
  *
  * meta=1 resolves ids to names: each event's name and run dates (closed shows
  * included, which the bare events listing no longer carries) and the ticket
@@ -40,7 +41,7 @@ import { NextResponse } from 'next/server';
 import { unstable_cache } from 'next/cache';
 import crypto from 'crypto';
 import { spektrixGet } from '@/lib/spektrix';
-import { dateWindows, addDays, daysBetween, COMP_TYPE_IDS } from '@/lib/historyFill';
+import { dateWindows, addDays, daysBetween } from '@/lib/historyFill';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -55,7 +56,17 @@ const PAGE_SIZE = 200;
 // Orders already placed barely move (a return or an exchange changes them),
 // so a finished window is worth keeping for a working session.
 const WINDOW_TTL_SECONDS = 6 * 3600;
-const GROUP_TYPE_IDS = new Set(['2201AVBSMNJRLVSBVJRS']);
+// The ids the other routes carry for these are not the ids Spektrix returns
+// (its /ticket-types listing is the source for the ones below), so a comp is
+// recognised here by its face price being zero, with the named comp types as
+// a second check for a comp issued against a priced seat.
+const COMP_NAMED = new Set([
+  '601APNNMRMBJQQPBSCNQGQHGKKCRPSSGN', // Artist Comp
+  '801ARDQDDMGGJKKRTNTJBMCCMMBCPQKCR', // Sponsor Comps
+  '1001ADGKSHLJDTDBJQTBMGLLJRLBJCMNN', // Volunteer Comp
+  '1002AHCBPDSTCNNKTDJHQGSBVHKNHQLMG', // General Comp
+]);
+const GROUP_TYPE_IDS = new Set(['2201AVBSMNJRLVSBVJRSDNQHLHDGPHDLD']);
 
 function sign(url) {
   const date = new Date().toUTCString();
@@ -91,42 +102,82 @@ const cents = (v) => Math.round(num(v) * 100);
 
 /**
  * One order, reduced to what the sums need. Tickets are grouped inside the
- * order by event, ticket type and the two zero-price flags a comp is defined
- * by, with money held in cents so the sums stay exact.
- *   [id, localDay, utcDay, lastDay, subscriptionCount, { key: [n, original, price, discount, total] }]
+ * order by event, ticket type, whether the face price is zero (a comp), how
+ * the price paid sits against the face price, and the offer applied. Money is
+ * held in cents so the sums stay exact.
+ *
+ * Price flag: z = nothing charged on the ticket, d = charged below face,
+ * f = charged at face. On an order that also buys a season ticket this is
+ * what tells a subscriber's seat (z or d) from a full-price ticket bought
+ * alongside it (f).
+ *
+ * A season ticket is sold two ways here. Some structures put the money on
+ * the subscription line and issue the seats at zero; others charge each seat
+ * at a subscriber price. For the first kind the subscription line's price is
+ * spread over that order's zero-charged seats in proportion to face price,
+ * so every show gets the share of the season ticket its seats represent
+ * (`alloc`). Whatever cannot be placed, because the order holds no such
+ * seats, is carried on the subscription line as unallocated.
+ *
+ *   [id, localDay, utcDay, lastDay, subscriptionCount,
+ *    { "event|type|faceZero|priceFlag|offer": [n, original, price, discount, total, alloc] },
+ *    { "structure|pricingSet": [n, price, allocated] }]
  */
 function compactOrder(o) {
   const tix = {};
+  const subLines = o?.ticketSubscriptions || [];
+  const subCents = subLines.reduce((n, s) => n + cents(s?.price), 0);
+  // Zero-charged seats with a face price, on non-comp types: the seats a
+  // season ticket paid for.
+  const takers = [];
   for (const t of o?.tickets || []) {
     const eventId = idOf(t?.event);
     if (!eventId) continue;
     const typeId = idOf(t?.type) || idOf(t?.ticketType);
-    const key = `${eventId}|${typeId}|${num(t?.originalPrice) === 0 ? 1 : 0}|${num(t?.total) === 0 ? 1 : 0}|${idOf(t?.offer)}`;
-    const a = tix[key] || (tix[key] = [0, 0, 0, 0, 0]);
+    const orig = cents(t?.originalPrice), price = cents(t?.price);
+    const flag = price === 0 ? 'z' : (price < orig ? 'd' : 'f');
+    const key = `${eventId}|${typeId}|${orig === 0 ? 1 : 0}|${flag}|${idOf(t?.offer)}`;
+    const a = tix[key] || (tix[key] = [0, 0, 0, 0, 0, 0]);
     a[0] += 1;
-    a[1] += cents(t?.originalPrice);
-    a[2] += cents(t?.price);
+    a[1] += orig;
+    a[2] += price;
     a[3] += cents(t?.discount);
     a[4] += cents(t?.total);
+    if (subCents > 0 && price === 0 && orig > 0 && !COMP_NAMED.has(typeId)) takers.push([key, orig]);
   }
-  // The season-ticket purchases on the order, by subscription product: how
-  // many, and whatever money fields the line carries.
+  let allocated = 0;
+  if (subCents > 0 && takers.length) {
+    const face = takers.reduce((n, [, c]) => n + c, 0);
+    takers.forEach(([key, c], i) => {
+      const share = i === takers.length - 1 ? subCents - allocated : Math.floor(subCents * c / face);
+      tix[key][5] += share;
+      allocated += share;
+    });
+  }
   const subs = {};
-  for (const s of o?.ticketSubscriptions || []) {
-    const key = idOf(s?.subscription) || idOf(s?.ticketSubscription) || idOf(s?.type) || idOf(s?.product) || 'unknown';
-    const a = subs[key] || (subs[key] = [0, 0, 0, 0, 0]);
+  subLines.forEach((s) => {
+    const key = `${s?.ticketSubscriptionStructureName || 'unnamed'}|${s?.pricingSetName || ''}`;
+    const a = subs[key] || (subs[key] = [0, 0, 0]);
     a[0] += 1;
-    a[1] += cents(s?.originalPrice);
-    a[2] += cents(s?.price);
-    a[3] += cents(s?.discount);
-    a[4] += cents(s?.total);
+    a[1] += cents(s?.price);
+  });
+  // The order's allocated total is split back over its lines by price, so the
+  // per-structure figure shows how much of each product reached a show.
+  if (allocated > 0 && subCents > 0) {
+    let left = allocated;
+    const keys = Object.keys(subs);
+    keys.forEach((k, i) => {
+      const share = i === keys.length - 1 ? left : Math.floor(allocated * subs[k][1] / subCents);
+      subs[k][2] += share;
+      left -= share;
+    });
   }
   return [
     o?.id || '',
     day(o?.firstTransactionDate) || day(o?.firstTransactionDateUtc),
     day(o?.firstTransactionDateUtc),
     day(o?.lastTransactionDate),
-    (o?.ticketSubscriptions || []).length,
+    subLines.length,
     tix,
     subs,
   ];
@@ -194,7 +245,7 @@ async function cachedWindow(base, from, to, deadline) {
         if (win.status !== 'done') throw new Incomplete(win);
         return win;
       },
-      ['revenue-scan', 'v2', from, to],
+      ['revenue-scan', 'v3', from, to],
       { revalidate: WINDOW_TTL_SECONDS, tags: ['revenue-scan'] },
     )();
   } catch (err) {
@@ -253,7 +304,7 @@ async function meta(searchParams) {
   }
   return NextResponse.json({
     events, ticketTypes, lookups,
-    compTypeIds: [...COMP_TYPE_IDS], groupTypeIds: [...GROUP_TYPE_IDS],
+    compTypeIds: [...COMP_NAMED], groupTypeIds: [...GROUP_TYPE_IDS],
   });
 }
 
@@ -306,16 +357,16 @@ export async function GET(request) {
         if (utc && utc !== local) utcDayDiffers++;
         if (subs > 0) subOrders++;
         for (const [key, a] of Object.entries(tix)) {
-          const [eventId, typeId, o0, t0, offerId] = key.split('|');
+          const [eventId, typeId, o0, flag, offerId] = key.split('|');
           const ev = agg[eventId] || (agg[eventId] = {});
-          const k = `${typeId}|${subs > 0 ? 1 : 0}|${o0}|${t0}|${offerId || ''}`;
-          const b = ev[k] || (ev[k] = [0, 0, 0, 0, 0]);
-          for (let i = 0; i < 5; i++) b[i] += a[i];
+          const k = `${typeId}|${subs > 0 ? 1 : 0}|${o0}|${flag}|${offerId || ''}`;
+          const b = ev[k] || (ev[k] = [0, 0, 0, 0, 0, 0]);
+          for (let i = 0; i < 6; i++) b[i] += a[i];
           tickets += a[0];
         }
         for (const [key, a] of Object.entries(subLines || {})) {
-          const b = subAgg[key] || (subAgg[key] = [0, 0, 0, 0, 0]);
-          for (let i = 0; i < 5; i++) b[i] += a[i];
+          const b = subAgg[key] || (subAgg[key] = [0, 0, 0]);
+          for (let i = 0; i < 3; i++) b[i] += a[i];
         }
       }
       if (s.shape) shape = { ...s.shape, ...(shape || {}) };
@@ -332,10 +383,11 @@ export async function GET(request) {
       // neighbouring call), and orders whose UTC day differs from the local
       // day they were bucketed on.
       outside: { before, after, undated, utcDayDiffers },
-      // agg[eventId]["typeId|sub|origZero|totalZero|offerId"] = [tickets, original, price, discount, total], money in cents.
-      // sub = the order also carries a season-ticket purchase.
+      // agg[eventId]["typeId|sub|faceZero|priceFlag|offerId"] = [tickets, original, price, discount, total, alloc], money in cents.
+      // sub = the order also carries a season-ticket purchase. priceFlag z/d/f = charged nothing / below face / at face.
+      // alloc = season-ticket money spread onto that order's zero-charged seats.
       agg,
-      // Season-ticket purchases by subscription product, same five figures.
+      // Season-ticket purchases, "structure|pricingSet" = [lines, price, allocated to seats], money in cents.
       subscriptions: subAgg,
       ...(debug ? { windows: report, shape } : {}),
       ms: Date.now() - started,
