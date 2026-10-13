@@ -102,79 +102,56 @@ const cents = (v) => Math.round(num(v) * 100);
 
 /**
  * One order, reduced to what the sums need. Tickets are grouped inside the
- * order by event, ticket type, whether the face price is zero (a comp), how
- * the price paid sits against the face price, and the offer applied. Money is
- * held in cents so the sums stay exact.
- *
- * Price flag: z = nothing charged on the ticket, d = charged below face,
- * f = charged at face, e = charged at face as part of a season ticket.
+ * order by event, ticket type, face price, price charged and the offer
+ * applied; money is held in cents so the sums stay exact. Keeping the unit
+ * prices in the key, rather than only their sums, is what lets a reader tell
+ * a subscriber's seat (charged the season's per-show price) from a single
+ * ticket of the same type on the same night.
  *
  * A season ticket shows on an order twice: as a subscription line with a
- * price, and as the seats it covers. On the orders checked the line's price
- * is the sum of its seats' prices, the same money stated twice, so the seats
- * already carry it and nothing is added. The order is tested rather than
- * trusted, and `mode` records which case it was:
- *   tickets   line price equals the below-face seats: the seats carry it.
- *   face      line price equals below-face plus at-face seats: the season
- *             ticket is priced at face, and those seats are flagged e.
- *   line      the line holds money the seats do not. The difference is
- *             spread over the order's zero-charged seats in proportion to
- *             face price (`alloc`), so each show gets its share.
- *   unplaced  as line, but the order has no zero-charged seat to take it.
- *   under     the line is less than the below-face seats (a discount from an
- *             offer sitting beside the season ticket).
- * A zero-charged seat that receives no allocation was given away, whatever
- * its ticket type says: a comp season ticket is exactly that.
+ * price, and as the seats it covers. The line's price restates its seats'
+ * prices, the same money said twice, so only the seats are summed and the
+ * line is reported separately for reference, never added on top. `mode`
+ * records how each season-ticket order's line sat against its seats, so that
+ * claim can be checked against a whole scan rather than taken on trust:
+ *   tickets  line equals the seats charged below face.
+ *   face     line equals below-face plus at-face seats.
+ *   under    line is less than the below-face seats (other discounted
+ *            tickets on the same order).
+ *   over     line is more than the below-face seats and not explained by the
+ *            at-face ones (season seats whose face is at or under the season
+ *            price, bought beside other full-price tickets).
  *
  *   [id, localDay, utcDay, lastDay, subscriptionCount,
- *    { "event|type|faceZero|priceFlag|offer": [n, original, price, discount, total, alloc] },
+ *    { "event|type|face|price|offer": [n, discount, total] },
  *    { "structure|pricingSet": [n, price] },
- *    mode, gapCents]
+ *    mode, lineMinusBelowFaceCents]
  */
 function compactOrder(o) {
   const subLines = o?.ticketSubscriptions || [];
   const subCents = subLines.reduce((n, s) => n + cents(s?.price), 0);
-  const rows = [];
+  const tix = {};
   let below = 0, atFace = 0;
   for (const t of o?.tickets || []) {
     const eventId = idOf(t?.event);
     if (!eventId) continue;
     const typeId = idOf(t?.type) || idOf(t?.ticketType);
     const orig = cents(t?.originalPrice), price = cents(t?.price);
-    const flag = price === 0 ? 'z' : (price < orig ? 'd' : 'f');
-    if (flag === 'd') below += price;
-    if (flag === 'f') atFace += price;
-    rows.push({ eventId, typeId, orig, price, flag, discount: cents(t?.discount), total: cents(t?.total), offer: idOf(t?.offer) });
+    if (price > 0 && price < orig) below += price;
+    if (price > 0 && price >= orig) atFace += price;
+    const key = `${eventId}|${typeId}|${orig}|${price}|${idOf(t?.offer)}`;
+    const a = tix[key] || (tix[key] = [0, 0, 0]);
+    a[0] += 1;
+    a[1] += cents(t?.discount);
+    a[2] += cents(t?.total);
   }
   let mode = '', gap = 0;
   if (subLines.length) {
     gap = subCents - below;
-    const takers = rows.filter(r => r.flag === 'z' && r.orig > 0 && !COMP_NAMED.has(r.typeId));
     if (gap === 0) mode = 'tickets';
     else if (gap < 0) mode = 'under';
     else if (atFace > 0 && gap === atFace) mode = 'face';
-    else if (takers.length) mode = 'line';
-    else mode = 'unplaced';
-    if (mode === 'face') for (const r of rows) if (r.flag === 'f') r.flag = 'e';
-    if (mode === 'line') {
-      const face = takers.reduce((n, r) => n + r.orig, 0);
-      let placed = 0;
-      takers.forEach((r, i) => {
-        r.alloc = i === takers.length - 1 ? gap - placed : Math.floor(gap * r.orig / face);
-        placed += r.alloc;
-      });
-    }
-  }
-  const tix = {};
-  for (const r of rows) {
-    const key = `${r.eventId}|${r.typeId}|${r.orig === 0 ? 1 : 0}|${r.flag}|${r.offer}`;
-    const a = tix[key] || (tix[key] = [0, 0, 0, 0, 0, 0]);
-    a[0] += 1;
-    a[1] += r.orig;
-    a[2] += r.price;
-    a[3] += r.discount;
-    a[4] += r.total;
-    a[5] += r.alloc || 0;
+    else mode = 'over';
   }
   const subs = {};
   for (const s of subLines) {
@@ -258,7 +235,7 @@ async function cachedWindow(base, from, to, deadline) {
         if (win.status !== 'done') throw new Incomplete(win);
         return win;
       },
-      ['revenue-scan', 'v4', from, to],
+      ['revenue-scan', 'v5', from, to],
       { revalidate: WINDOW_TTL_SECONDS, tags: ['revenue-scan'] },
     )();
   } catch (err) {
@@ -371,11 +348,11 @@ export async function GET(request) {
         if (utc && utc !== local) utcDayDiffers++;
         if (subs > 0) subOrders++;
         for (const [key, a] of Object.entries(tix)) {
-          const [eventId, typeId, o0, flag, offerId] = key.split('|');
+          const [eventId, typeId, orig, price, offerId] = key.split('|');
           const ev = agg[eventId] || (agg[eventId] = {});
-          const k = `${typeId}|${subs > 0 ? 1 : 0}|${o0}|${flag}|${offerId || ''}`;
-          const b = ev[k] || (ev[k] = [0, 0, 0, 0, 0, 0]);
-          for (let i = 0; i < 6; i++) b[i] += a[i];
+          const k = `${typeId}|${subs > 0 ? 1 : 0}|${orig}|${price}|${offerId || ''}`;
+          const b = ev[k] || (ev[k] = [0, 0, 0]);
+          for (let i = 0; i < 3; i++) b[i] += a[i];
           tickets += a[0];
         }
         for (const [key, a] of Object.entries(subLines || {})) {
@@ -402,14 +379,15 @@ export async function GET(request) {
       // neighbouring call), and orders whose UTC day differs from the local
       // day they were bucketed on.
       outside: { before, after, undated, utcDayDiffers },
-      // agg[eventId]["typeId|sub|faceZero|priceFlag|offerId"] = [tickets, original, price, discount, total, alloc], money in cents.
-      // sub = the order also carries a season-ticket purchase. priceFlag z/d/f/e = charged nothing / below face / at face / at face inside a season ticket.
-      // alloc = season-ticket money the seats did not already carry, spread onto that order's zero-charged seats.
+      // agg[eventId]["typeId|sub|face|price|offerId"] = [tickets, discount, total], money in cents.
+      // face and price are per ticket; sub = the order also carries a season-ticket purchase;
+      // total is price plus any per-ticket fee.
       agg,
       // Season-ticket purchases, "structure|pricingSet" = [lines, price], money in cents.
       subscriptions: subAgg,
       // How each season-ticket order's line price sat against its seats:
       // mode = [orders, line price minus below-face seat prices, in cents].
+      // The lines restate the seats and are never added to them.
       subscriptionModes: modes,
       ...(debug ? { windows: report, shape } : {}),
       ms: Date.now() - started,
