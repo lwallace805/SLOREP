@@ -1,0 +1,32 @@
+# Walks the deployed dashboard's /api/revenue-scan month by month and commits
+# the per-show aggregates under report/marketing-scan/. The dashboard holds
+# the Spektrix credentials; this job only reads its public routes.
+name: marketing-scan
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/cool-euler-lwl44p']
+    paths: ['scripts/marketing-scan/**', '.github/workflows/marketing-scan.yml']
+permissions:
+  contents: write
+concurrency: marketing-scan
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Scan
+        env:
+          FROM: '2024-05-19'
+          OUT: report/marketing-scan
+        run: node scripts/marketing-scan/agg.mjs
+      - name: Commit results
+        run: |
+          git config user.name 'marketing-scan'
+          git config user.email 'noreply@slorep.org'
+          git add report/marketing-scan
+          git diff --cached --quiet || git commit -m "marketing-scan: results $(date -u +%Y-%m-%dT%H:%MZ) [skip ci]"
+          git push
