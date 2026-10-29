@@ -1,0 +1,5115 @@
+{
+ "from": "2024-05-19",
+ "to": "2026-10-29",
+ "events": {
+  "2479AVBVGTKGHCPJGSMMKRMCTKMDDMDRQ": {
+   "id": "2479AVBVGTKGHCPJGSMMKRMCTKMDDMDRQ",
+   "name": "9 to 5",
+   "first": "2024-06-07T19:00",
+   "last": "2024-06-30T14:00",
+   "perfs": 22,
+   "t": 1084,
+   "comp": 225,
+   "paid": 859,
+   "sub": 0,
+   "single": 859,
+   "adu": 859,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 32479,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 294,
+     "paid": 243,
+     "sub": 0,
+     "single": 243,
+     "comp": 51,
+     "rev": 9374,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 790,
+     "paid": 616,
+     "sub": 0,
+     "single": 616,
+     "comp": 174,
+     "rev": 23105,
+     "promo": 0
+    }
+   }
+  },
+  "2410ALGMBQTNMVJSRCQNVKDNRTLVLNNTS": {
+   "id": "2410ALGMBQTNMVJSRCQNVKDNRTLVLNNTS",
+   "name": "The Thanksgiving Play",
+   "first": "2024-05-03T19:00",
+   "last": "2024-05-19T14:00",
+   "perfs": 14,
+   "t": 11,
+   "comp": 7,
+   "paid": 4,
+   "sub": 0,
+   "single": 4,
+   "adu": 4,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 144,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 9,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 5,
+     "rev": 144,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 2,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 2,
+     "rev": 0,
+     "promo": 0
+    }
+   }
+  },
+  "2548AGTNMMSRDTLQDGGTJQDNMCQVTJNQK": {
+   "id": "2548AGTNMMSRDTLQDGGTJQDNMCQVTJNQK",
+   "name": "Misery",
+   "first": "2024-10-11T19:00",
+   "last": "2024-10-27T14:00",
+   "perfs": 14,
+   "t": 1347,
+   "comp": 147,
+   "paid": 1200,
+   "sub": 0,
+   "single": 1200,
+   "adu": 1200,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 43262,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 6,
+     "paid": 5,
+     "sub": 0,
+     "single": 5,
+     "comp": 1,
+     "rev": 199,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 257,
+     "paid": 232,
+     "sub": 0,
+     "single": 232,
+     "comp": 25,
+     "rev": 9242,
+     "promo": 0
+    },
+    "2024-07": {
+     "t": 201,
+     "paid": 188,
+     "sub": 0,
+     "single": 188,
+     "comp": 13,
+     "rev": 7447,
+     "promo": 0
+    },
+    "2024-08": {
+     "t": 77,
+     "paid": 66,
+     "sub": 0,
+     "single": 66,
+     "comp": 11,
+     "rev": 2558,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 159,
+     "paid": 150,
+     "sub": 0,
+     "single": 150,
+     "comp": 9,
+     "rev": 5336,
+     "promo": 0
+    },
+    "2024-10": {
+     "t": 593,
+     "paid": 509,
+     "sub": 0,
+     "single": 509,
+     "comp": 84,
+     "rev": 16506,
+     "promo": 0
+    },
+    "2024-11": {
+     "t": 4,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 2,
+     "rev": 80,
+     "promo": 0
+    },
+    "2025-01": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 144,
+     "promo": 0
+    },
+    "2025-02": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 159,
+     "promo": 0
+    },
+    "2025-03": {
+     "t": 10,
+     "paid": 10,
+     "sub": 0,
+     "single": 10,
+     "comp": 0,
+     "rev": 398,
+     "promo": 0
+    },
+    "2025-04": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 159,
+     "promo": 0
+    },
+    "2025-05": {
+     "t": 13,
+     "paid": 11,
+     "sub": 0,
+     "single": 11,
+     "comp": 2,
+     "rev": 438,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 15,
+     "paid": 15,
+     "sub": 0,
+     "single": 15,
+     "comp": 0,
+     "rev": 597,
+     "promo": 0
+    }
+   }
+  },
+  "2458AQBGKNJRNNDMRGQHKTQLKMHBCTDDQ": {
+   "id": "2458AQBGKNJRNNDMRGQHKTQLKMHBCTDDQ",
+   "name": "Million Dollar Quartet",
+   "first": "2025-02-07T19:00",
+   "last": "2025-03-09T19:00",
+   "perfs": 29,
+   "t": 2919,
+   "comp": 268,
+   "paid": 2651,
+   "sub": 0,
+   "single": 2651,
+   "adu": 2651,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 141222,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 4,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 2,
+     "rev": 100,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 200,
+     "paid": 191,
+     "sub": 0,
+     "single": 191,
+     "comp": 9,
+     "rev": 9590,
+     "promo": 0
+    },
+    "2024-07": {
+     "t": 314,
+     "paid": 308,
+     "sub": 0,
+     "single": 308,
+     "comp": 6,
+     "rev": 16590,
+     "promo": 0
+    },
+    "2024-08": {
+     "t": 113,
+     "paid": 104,
+     "sub": 0,
+     "single": 104,
+     "comp": 9,
+     "rev": 5580,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 74,
+     "paid": 74,
+     "sub": 0,
+     "single": 74,
+     "comp": 0,
+     "rev": 4100,
+     "promo": 0
+    },
+    "2024-10": {
+     "t": 127,
+     "paid": 124,
+     "sub": 0,
+     "single": 124,
+     "comp": 3,
+     "rev": 6502,
+     "promo": 0
+    },
+    "2024-11": {
+     "t": 60,
+     "paid": 59,
+     "sub": 0,
+     "single": 59,
+     "comp": 1,
+     "rev": 3255,
+     "promo": 0
+    },
+    "2024-12": {
+     "t": 122,
+     "paid": 113,
+     "sub": 0,
+     "single": 113,
+     "comp": 9,
+     "rev": 6320,
+     "promo": 0
+    },
+    "2025-01": {
+     "t": 649,
+     "paid": 595,
+     "sub": 0,
+     "single": 595,
+     "comp": 54,
+     "rev": 32350,
+     "promo": 0
+    },
+    "2025-02": {
+     "t": 1154,
+     "paid": 1003,
+     "sub": 0,
+     "single": 1003,
+     "comp": 151,
+     "rev": 52800,
+     "promo": 0
+    },
+    "2025-03": {
+     "t": 83,
+     "paid": 61,
+     "sub": 0,
+     "single": 61,
+     "comp": 22,
+     "rev": 3185,
+     "promo": 0
+    },
+    "2025-04": {
+     "t": 3,
+     "paid": 3,
+     "sub": 0,
+     "single": 3,
+     "comp": 0,
+     "rev": 150,
+     "promo": 0
+    },
+    "2025-05": {
+     "t": 11,
+     "paid": 9,
+     "sub": 0,
+     "single": 9,
+     "comp": 2,
+     "rev": 450,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 5,
+     "paid": 5,
+     "sub": 0,
+     "single": 5,
+     "comp": 0,
+     "rev": 250,
+     "promo": 0
+    }
+   }
+  },
+  "2583AVQGJTKKJKJSJCCKQNCJDRRNPJQPC": {
+   "id": "2583AVQGJTKKJKJSJCCKQNCJDRRNPJQPC",
+   "name": "The Cake",
+   "first": "2025-03-28T19:00",
+   "last": "2025-04-13T14:00",
+   "perfs": 14,
+   "t": 1303,
+   "comp": 244,
+   "paid": 1059,
+   "sub": 0,
+   "single": 1059,
+   "adu": 1059,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 39921,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 9,
+     "paid": 6,
+     "sub": 0,
+     "single": 6,
+     "comp": 3,
+     "rev": 239,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 262,
+     "paid": 237,
+     "sub": 0,
+     "single": 237,
+     "comp": 25,
+     "rev": 9431,
+     "promo": 0
+    },
+    "2024-07": {
+     "t": 184,
+     "paid": 168,
+     "sub": 0,
+     "single": 168,
+     "comp": 16,
+     "rev": 6694,
+     "promo": 0
+    },
+    "2024-08": {
+     "t": 42,
+     "paid": 40,
+     "sub": 0,
+     "single": 40,
+     "comp": 2,
+     "rev": 1543,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 21,
+     "paid": 18,
+     "sub": 0,
+     "single": 18,
+     "comp": 3,
+     "rev": 696,
+     "promo": 0
+    },
+    "2024-10": {
+     "t": 17,
+     "paid": 17,
+     "sub": 0,
+     "single": 17,
+     "comp": 0,
+     "rev": 636,
+     "promo": 0
+    },
+    "2024-11": {
+     "t": 3,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 1,
+     "rev": 80,
+     "promo": 0
+    },
+    "2024-12": {
+     "t": 6,
+     "paid": 6,
+     "sub": 0,
+     "single": 6,
+     "comp": 0,
+     "rev": 246,
+     "promo": 0
+    },
+    "2025-01": {
+     "t": 38,
+     "paid": 34,
+     "sub": 0,
+     "single": 34,
+     "comp": 4,
+     "rev": 1344,
+     "promo": 0
+    },
+    "2025-02": {
+     "t": 39,
+     "paid": 35,
+     "sub": 0,
+     "single": 35,
+     "comp": 4,
+     "rev": 1376,
+     "promo": 0
+    },
+    "2025-03": {
+     "t": 393,
+     "paid": 275,
+     "sub": 0,
+     "single": 275,
+     "comp": 118,
+     "rev": 10302,
+     "promo": 0
+    },
+    "2025-04": {
+     "t": 257,
+     "paid": 193,
+     "sub": 0,
+     "single": 193,
+     "comp": 64,
+     "rev": 6237,
+     "promo": 0
+    },
+    "2025-05": {
+     "t": 15,
+     "paid": 11,
+     "sub": 0,
+     "single": 11,
+     "comp": 4,
+     "rev": 438,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 17,
+     "paid": 17,
+     "sub": 0,
+     "single": 17,
+     "comp": 0,
+     "rev": 661,
+     "promo": 0
+    }
+   }
+  },
+  "2463ARGMMKSTKKQNJKVQLGSNSLLRDJMPH": {
+   "id": "2463ARGMMKSTKKQNJKVQLGSNSLLRDJMPH",
+   "name": "Charlie Brown",
+   "first": "2025-06-06T19:00",
+   "last": "2025-06-29T14:00",
+   "perfs": 22,
+   "t": 1826,
+   "comp": 253,
+   "paid": 1573,
+   "sub": 0,
+   "single": 1573,
+   "adu": 1573,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 58245,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 7,
+     "paid": 5,
+     "sub": 0,
+     "single": 5,
+     "comp": 2,
+     "rev": 199,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 261,
+     "paid": 232,
+     "sub": 0,
+     "single": 232,
+     "comp": 29,
+     "rev": 9182,
+     "promo": 0
+    },
+    "2024-07": {
+     "t": 170,
+     "paid": 156,
+     "sub": 0,
+     "single": 156,
+     "comp": 14,
+     "rev": 6322,
+     "promo": 0
+    },
+    "2024-08": {
+     "t": 22,
+     "paid": 22,
+     "sub": 0,
+     "single": 22,
+     "comp": 0,
+     "rev": 888,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 19,
+     "paid": 18,
+     "sub": 0,
+     "single": 18,
+     "comp": 1,
+     "rev": 691,
+     "promo": 0
+    },
+    "2024-10": {
+     "t": 18,
+     "paid": 18,
+     "sub": 0,
+     "single": 18,
+     "comp": 0,
+     "rev": 678,
+     "promo": 0
+    },
+    "2024-11": {
+     "t": 3,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 1,
+     "rev": 82,
+     "promo": 0
+    },
+    "2024-12": {
+     "t": 3,
+     "paid": 3,
+     "sub": 0,
+     "single": 3,
+     "comp": 0,
+     "rev": 132,
+     "promo": 0
+    },
+    "2025-01": {
+     "t": 57,
+     "paid": 56,
+     "sub": 0,
+     "single": 56,
+     "comp": 1,
+     "rev": 2151,
+     "promo": 0
+    },
+    "2025-02": {
+     "t": 77,
+     "paid": 69,
+     "sub": 0,
+     "single": 69,
+     "comp": 8,
+     "rev": 2613,
+     "promo": 0
+    },
+    "2025-03": {
+     "t": 33,
+     "paid": 31,
+     "sub": 0,
+     "single": 31,
+     "comp": 2,
+     "rev": 1332,
+     "promo": 0
+    },
+    "2025-04": {
+     "t": 74,
+     "paid": 58,
+     "sub": 0,
+     "single": 58,
+     "comp": 16,
+     "rev": 2371,
+     "promo": 0
+    },
+    "2025-05": {
+     "t": 396,
+     "paid": 351,
+     "sub": 0,
+     "single": 351,
+     "comp": 45,
+     "rev": 12422,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 686,
+     "paid": 552,
+     "sub": 0,
+     "single": 552,
+     "comp": 134,
+     "rev": 19182,
+     "promo": 0
+    }
+   }
+  },
+  "2401AMBSVDSNBDLGKMKJVPMHNLQGTKHSV": {
+   "id": "2401AMBSVDSNBDLGKMKJVPMHNLQGTKHSV",
+   "name": "The Musical of Musicals",
+   "first": "2024-08-16T19:00",
+   "last": "2024-09-15T14:00",
+   "perfs": 24,
+   "t": 1980,
+   "comp": 305,
+   "paid": 1675,
+   "sub": 0,
+   "single": 1675,
+   "adu": 1675,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 65883,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 8,
+     "paid": 6,
+     "sub": 0,
+     "single": 6,
+     "comp": 2,
+     "rev": 239,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 280,
+     "paid": 243,
+     "sub": 0,
+     "single": 243,
+     "comp": 37,
+     "rev": 9675,
+     "promo": 0
+    },
+    "2024-07": {
+     "t": 503,
+     "paid": 450,
+     "sub": 0,
+     "single": 450,
+     "comp": 53,
+     "rev": 18688,
+     "promo": 0
+    },
+    "2024-08": {
+     "t": 824,
+     "paid": 686,
+     "sub": 0,
+     "single": 686,
+     "comp": 138,
+     "rev": 26071,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 301,
+     "paid": 230,
+     "sub": 0,
+     "single": 230,
+     "comp": 71,
+     "rev": 8818,
+     "promo": 0
+    },
+    "2024-10": {
+     "t": 10,
+     "paid": 10,
+     "sub": 0,
+     "single": 10,
+     "comp": 0,
+     "rev": 398,
+     "promo": 0
+    },
+    "2024-11": {
+     "t": 2,
+     "paid": 1,
+     "sub": 0,
+     "single": 1,
+     "comp": 1,
+     "rev": 40,
+     "promo": 0
+    },
+    "2025-01": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 80,
+     "promo": 0
+    },
+    "2025-02": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 159,
+     "promo": 0
+    },
+    "2025-03": {
+     "t": 11,
+     "paid": 11,
+     "sub": 0,
+     "single": 11,
+     "comp": 0,
+     "rev": 442,
+     "promo": 0
+    },
+    "2025-04": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 159,
+     "promo": 0
+    },
+    "2025-05": {
+     "t": 14,
+     "paid": 11,
+     "sub": 0,
+     "single": 11,
+     "comp": 3,
+     "rev": 438,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 17,
+     "paid": 17,
+     "sub": 0,
+     "single": 17,
+     "comp": 0,
+     "rev": 677,
+     "promo": 0
+    }
+   }
+  },
+  "2617AVLBRDKLSTGGHJCKGLVNCRBMVHBSD": {
+   "id": "2617AVLBRDKLSTGGHJCKGLVNCRBMVHBSD",
+   "name": "Crazy for You",
+   "first": "2024-07-18T19:00",
+   "last": "2024-07-28T14:00",
+   "perfs": 11,
+   "t": 1013,
+   "comp": 139,
+   "paid": 874,
+   "sub": 0,
+   "single": 874,
+   "adu": 874,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 20494,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 108,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 269,
+     "paid": 242,
+     "sub": 0,
+     "single": 242,
+     "comp": 27,
+     "rev": 6067,
+     "promo": 0
+    },
+    "2024-07": {
+     "t": 732,
+     "paid": 623,
+     "sub": 0,
+     "single": 623,
+     "comp": 109,
+     "rev": 14197,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 4,
+     "paid": 1,
+     "sub": 0,
+     "single": 1,
+     "comp": 3,
+     "rev": 27,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 95,
+     "promo": 0
+    }
+   }
+  },
+  "2432AJVRMNHDVTQLCPVKHNMGBJHRCCJPP": {
+   "id": "2432AJVRMNHDVTQLCPVKHNMGBJHRCCJPP",
+   "name": "17 Raccoons",
+   "first": "2025-03-14T19:00",
+   "last": "2025-03-15T19:00",
+   "perfs": 3,
+   "t": 286,
+   "comp": 39,
+   "paid": 247,
+   "sub": 0,
+   "single": 247,
+   "adu": 247,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 4219,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 72,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 52,
+     "paid": 50,
+     "sub": 0,
+     "single": 50,
+     "comp": 2,
+     "rev": 900,
+     "promo": 0
+    },
+    "2024-07": {
+     "t": 20,
+     "paid": 20,
+     "sub": 0,
+     "single": 20,
+     "comp": 0,
+     "rev": 352,
+     "promo": 0
+    },
+    "2024-08": {
+     "t": 7,
+     "paid": 7,
+     "sub": 0,
+     "single": 7,
+     "comp": 0,
+     "rev": 118,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 36,
+     "promo": 0
+    },
+    "2024-11": {
+     "t": 1,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 1,
+     "rev": 0,
+     "promo": 0
+    },
+    "2024-12": {
+     "t": 7,
+     "paid": 7,
+     "sub": 0,
+     "single": 7,
+     "comp": 0,
+     "rev": 112,
+     "promo": 0
+    },
+    "2025-01": {
+     "t": 7,
+     "paid": 7,
+     "sub": 0,
+     "single": 7,
+     "comp": 0,
+     "rev": 120,
+     "promo": 0
+    },
+    "2025-02": {
+     "t": 52,
+     "paid": 45,
+     "sub": 0,
+     "single": 45,
+     "comp": 7,
+     "rev": 774,
+     "promo": 0
+    },
+    "2025-03": {
+     "t": 131,
+     "paid": 102,
+     "sub": 0,
+     "single": 102,
+     "comp": 29,
+     "rev": 1681,
+     "promo": 0
+    },
+    "2025-04": {
+     "t": 1,
+     "paid": 1,
+     "sub": 0,
+     "single": 1,
+     "comp": 0,
+     "rev": 18,
+     "promo": 0
+    },
+    "2025-05": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 36,
+     "promo": 0
+    }
+   }
+  },
+  "2520ATSNTCJRMBBTPKGJNDLQMNBRVQNKK": {
+   "id": "2520ATSNTCJRMBBTPKGJNDLQMNBRVQNKK",
+   "name": "MDQ Valentine's Gala",
+   "first": "2025-02-14T19:00",
+   "last": "2025-02-14T19:00",
+   "perfs": 1,
+   "t": 101,
+   "comp": 12,
+   "paid": 89,
+   "sub": 0,
+   "single": 89,
+   "adu": 89,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 12680,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 590,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 32,
+     "paid": 31,
+     "sub": 0,
+     "single": 31,
+     "comp": 1,
+     "rev": 4515,
+     "promo": 0
+    },
+    "2024-07": {
+     "t": 32,
+     "paid": 30,
+     "sub": 0,
+     "single": 30,
+     "comp": 2,
+     "rev": 4360,
+     "promo": 0
+    },
+    "2024-08": {
+     "t": 8,
+     "paid": 6,
+     "sub": 0,
+     "single": 6,
+     "comp": 2,
+     "rev": 790,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 1,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 1,
+     "rev": 0,
+     "promo": 0
+    },
+    "2024-10": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 250,
+     "promo": 0
+    },
+    "2024-11": {
+     "t": 10,
+     "paid": 9,
+     "sub": 0,
+     "single": 9,
+     "comp": 1,
+     "rev": 1125,
+     "promo": 0
+    },
+    "2025-01": {
+     "t": 1,
+     "paid": 1,
+     "sub": 0,
+     "single": 1,
+     "comp": 0,
+     "rev": 155,
+     "promo": 0
+    },
+    "2025-02": {
+     "t": 7,
+     "paid": 3,
+     "sub": 0,
+     "single": 3,
+     "comp": 4,
+     "rev": 435,
+     "promo": 0
+    },
+    "2025-03": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 310,
+     "promo": 0
+    },
+    "2025-05": {
+     "t": 2,
+     "paid": 1,
+     "sub": 0,
+     "single": 1,
+     "comp": 1,
+     "rev": 150,
+     "promo": 0
+    }
+   }
+  },
+  "2408AVRSLDPPTMBGTSRMPDCNMMNMBNHCN": {
+   "id": "2408AVRSLDPPTMBGTSRMPDCNMMNMBNHCN",
+   "name": "Molly Sweeney",
+   "first": "2024-11-01T19:00",
+   "last": "2024-11-02T19:00",
+   "perfs": 3,
+   "t": 163,
+   "comp": 32,
+   "paid": 131,
+   "sub": 0,
+   "single": 131,
+   "adu": 131,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 2331,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 72,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 52,
+     "paid": 50,
+     "sub": 0,
+     "single": 50,
+     "comp": 2,
+     "rev": 900,
+     "promo": 0
+    },
+    "2024-07": {
+     "t": 18,
+     "paid": 18,
+     "sub": 0,
+     "single": 18,
+     "comp": 0,
+     "rev": 324,
+     "promo": 0
+    },
+    "2024-08": {
+     "t": 3,
+     "paid": 3,
+     "sub": 0,
+     "single": 3,
+     "comp": 0,
+     "rev": 54,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 5,
+     "paid": 5,
+     "sub": 0,
+     "single": 5,
+     "comp": 0,
+     "rev": 90,
+     "promo": 0
+    },
+    "2024-10": {
+     "t": 48,
+     "paid": 29,
+     "sub": 0,
+     "single": 29,
+     "comp": 19,
+     "rev": 503,
+     "promo": 0
+    },
+    "2024-11": {
+     "t": 26,
+     "paid": 17,
+     "sub": 0,
+     "single": 17,
+     "comp": 9,
+     "rev": 300,
+     "promo": 0
+    },
+    "2025-01": {
+     "t": 3,
+     "paid": 1,
+     "sub": 0,
+     "single": 1,
+     "comp": 2,
+     "rev": 16,
+     "promo": 0
+    },
+    "2025-05": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 72,
+     "promo": 0
+    }
+   }
+  },
+  "2585AVBLRHVTQKVHGVQBQBKKCMKSQDQKH": {
+   "id": "2585AVBLRHVTQKVHGVQBQBKKCMKSQDQKH",
+   "name": "Seminar",
+   "first": "2025-04-18T19:00",
+   "last": "2025-04-19T19:00",
+   "perfs": 3,
+   "t": 233,
+   "comp": 77,
+   "paid": 156,
+   "sub": 0,
+   "single": 156,
+   "adu": 156,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 2724,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 72,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 52,
+     "paid": 50,
+     "sub": 0,
+     "single": 50,
+     "comp": 2,
+     "rev": 900,
+     "promo": 0
+    },
+    "2024-07": {
+     "t": 16,
+     "paid": 16,
+     "sub": 0,
+     "single": 16,
+     "comp": 0,
+     "rev": 292,
+     "promo": 0
+    },
+    "2024-08": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 68,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 36,
+     "promo": 0
+    },
+    "2024-11": {
+     "t": 1,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 1,
+     "rev": 0,
+     "promo": 0
+    },
+    "2025-02": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 80,
+     "promo": 0
+    },
+    "2025-03": {
+     "t": 27,
+     "paid": 13,
+     "sub": 0,
+     "single": 13,
+     "comp": 14,
+     "rev": 215,
+     "promo": 0
+    },
+    "2025-04": {
+     "t": 121,
+     "paid": 61,
+     "sub": 0,
+     "single": 61,
+     "comp": 60,
+     "rev": 1025,
+     "promo": 0
+    },
+    "2025-05": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 36,
+     "promo": 0
+    }
+   }
+  },
+  "2493ANPMKNNLMRMHNDMMNQPQVGCQRDRRQ": {
+   "id": "2493ANPMKNNLMRMHNDMMNQPQVGCQRDRRQ",
+   "name": "I Hate Hamlet",
+   "first": "2025-05-02T19:00",
+   "last": "2025-05-18T14:00",
+   "perfs": 14,
+   "t": 1288,
+   "comp": 186,
+   "paid": 1102,
+   "sub": 0,
+   "single": 1102,
+   "adu": 1102,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 40631,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 3,
+     "paid": 3,
+     "sub": 0,
+     "single": 3,
+     "comp": 0,
+     "rev": 119,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 267,
+     "paid": 241,
+     "sub": 0,
+     "single": 241,
+     "comp": 26,
+     "rev": 9609,
+     "promo": 0
+    },
+    "2024-07": {
+     "t": 180,
+     "paid": 168,
+     "sub": 0,
+     "single": 168,
+     "comp": 12,
+     "rev": 6607,
+     "promo": 0
+    },
+    "2024-08": {
+     "t": 32,
+     "paid": 28,
+     "sub": 0,
+     "single": 28,
+     "comp": 4,
+     "rev": 1061,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 17,
+     "paid": 14,
+     "sub": 0,
+     "single": 14,
+     "comp": 3,
+     "rev": 536,
+     "promo": 0
+    },
+    "2024-10": {
+     "t": 17,
+     "paid": 17,
+     "sub": 0,
+     "single": 17,
+     "comp": 0,
+     "rev": 642,
+     "promo": 0
+    },
+    "2024-11": {
+     "t": 5,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 3,
+     "rev": 80,
+     "promo": 0
+    },
+    "2024-12": {
+     "t": 10,
+     "paid": 8,
+     "sub": 0,
+     "single": 8,
+     "comp": 2,
+     "rev": 316,
+     "promo": 0
+    },
+    "2025-01": {
+     "t": 9,
+     "paid": 9,
+     "sub": 0,
+     "single": 9,
+     "comp": 0,
+     "rev": 343,
+     "promo": 0
+    },
+    "2025-02": {
+     "t": 19,
+     "paid": 15,
+     "sub": 0,
+     "single": 15,
+     "comp": 4,
+     "rev": 572,
+     "promo": 0
+    },
+    "2025-03": {
+     "t": 65,
+     "paid": 53,
+     "sub": 0,
+     "single": 53,
+     "comp": 12,
+     "rev": 2053,
+     "promo": 0
+    },
+    "2025-04": {
+     "t": 232,
+     "paid": 189,
+     "sub": 0,
+     "single": 189,
+     "comp": 43,
+     "rev": 6716,
+     "promo": 0
+    },
+    "2025-05": {
+     "t": 412,
+     "paid": 335,
+     "sub": 0,
+     "single": 335,
+     "comp": 77,
+     "rev": 11196,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 20,
+     "paid": 20,
+     "sub": 0,
+     "single": 20,
+     "comp": 0,
+     "rev": 782,
+     "promo": 0
+    }
+   }
+  },
+  "2579AGDBCTRCHBTCQSMPVJHQRQPQCBDLP": {
+   "id": "2579AGDBCTRCHBTCQSMPVJHQRQPQCBDLP",
+   "name": "Twelfth Night",
+   "first": "2025-01-10T19:00",
+   "last": "2025-01-19T14:00",
+   "perfs": 9,
+   "t": 631,
+   "comp": 83,
+   "paid": 548,
+   "sub": 0,
+   "single": 548,
+   "adu": 548,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 12185,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 100,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 27,
+     "paid": 24,
+     "sub": 0,
+     "single": 24,
+     "comp": 3,
+     "rev": 578,
+     "promo": 0
+    },
+    "2024-07": {
+     "t": 24,
+     "paid": 16,
+     "sub": 0,
+     "single": 16,
+     "comp": 8,
+     "rev": 380,
+     "promo": 0
+    },
+    "2024-08": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 48,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 11,
+     "paid": 11,
+     "sub": 0,
+     "single": 11,
+     "comp": 0,
+     "rev": 269,
+     "promo": 0
+    },
+    "2024-10": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 46,
+     "promo": 0
+    },
+    "2024-11": {
+     "t": 41,
+     "paid": 41,
+     "sub": 0,
+     "single": 41,
+     "comp": 0,
+     "rev": 925,
+     "promo": 0
+    },
+    "2024-12": {
+     "t": 108,
+     "paid": 98,
+     "sub": 0,
+     "single": 98,
+     "comp": 10,
+     "rev": 2277,
+     "promo": 0
+    },
+    "2025-01": {
+     "t": 408,
+     "paid": 347,
+     "sub": 0,
+     "single": 347,
+     "comp": 61,
+     "rev": 7487,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 4,
+     "paid": 3,
+     "sub": 0,
+     "single": 3,
+     "comp": 1,
+     "rev": 75,
+     "promo": 0
+    }
+   }
+  },
+  "2653ACKBTRNHNTLBTSCPRCSLMPLTDJCTK": {
+   "id": "2653ACKBTRNHNTLBTSCPRCSLMPLTDJCTK",
+   "name": "Ada and the Engine",
+   "first": "2025-05-23T19:00",
+   "last": "2025-05-24T19:00",
+   "perfs": 3,
+   "t": 245,
+   "comp": 40,
+   "paid": 205,
+   "sub": 0,
+   "single": 205,
+   "adu": 205,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 3537,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 1,
+     "paid": 1,
+     "sub": 0,
+     "single": 1,
+     "comp": 0,
+     "rev": 18,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 45,
+     "paid": 44,
+     "sub": 0,
+     "single": 44,
+     "comp": 1,
+     "rev": 792,
+     "promo": 0
+    },
+    "2024-07": {
+     "t": 15,
+     "paid": 15,
+     "sub": 0,
+     "single": 15,
+     "comp": 0,
+     "rev": 266,
+     "promo": 0
+    },
+    "2024-08": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 36,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 36,
+     "promo": 0
+    },
+    "2024-11": {
+     "t": 3,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 1,
+     "rev": 32,
+     "promo": 0
+    },
+    "2025-01": {
+     "t": 1,
+     "paid": 1,
+     "sub": 0,
+     "single": 1,
+     "comp": 0,
+     "rev": 16,
+     "promo": 0
+    },
+    "2025-03": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 32,
+     "promo": 0
+    },
+    "2025-04": {
+     "t": 9,
+     "paid": 9,
+     "sub": 0,
+     "single": 9,
+     "comp": 0,
+     "rev": 152,
+     "promo": 0
+    },
+    "2025-05": {
+     "t": 165,
+     "paid": 127,
+     "sub": 0,
+     "single": 127,
+     "comp": 38,
+     "rev": 2157,
+     "promo": 0
+    }
+   }
+  },
+  "2412ANPLQDKMLTSCHJRPVQQMHRRLNTTNR": {
+   "id": "2412ANPLQDKMLTSCHJRPVQQMHRRLNTTNR",
+   "name": "A Christmas Story",
+   "first": "2024-11-30T19:00",
+   "last": "2024-12-22T14:00",
+   "perfs": 20,
+   "t": 1922,
+   "comp": 203,
+   "paid": 1719,
+   "sub": 0,
+   "single": 1719,
+   "adu": 1719,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 57504,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 4,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 0,
+     "rev": 172,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 32,
+     "paid": 24,
+     "sub": 0,
+     "single": 24,
+     "comp": 8,
+     "rev": 1006,
+     "promo": 0
+    },
+    "2024-07": {
+     "t": 44,
+     "paid": 37,
+     "sub": 0,
+     "single": 37,
+     "comp": 7,
+     "rev": 1386,
+     "promo": 0
+    },
+    "2024-08": {
+     "t": 23,
+     "paid": 21,
+     "sub": 0,
+     "single": 21,
+     "comp": 2,
+     "rev": 789,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 112,
+     "paid": 110,
+     "sub": 0,
+     "single": 110,
+     "comp": 2,
+     "rev": 4121,
+     "promo": 0
+    },
+    "2024-10": {
+     "t": 230,
+     "paid": 198,
+     "sub": 0,
+     "single": 198,
+     "comp": 32,
+     "rev": 6673,
+     "promo": 0
+    },
+    "2024-11": {
+     "t": 863,
+     "paid": 794,
+     "sub": 0,
+     "single": 794,
+     "comp": 69,
+     "rev": 27137,
+     "promo": 0
+    },
+    "2024-12": {
+     "t": 603,
+     "paid": 520,
+     "sub": 0,
+     "single": 520,
+     "comp": 83,
+     "rev": 15830,
+     "promo": 0
+    },
+    "2025-05": {
+     "t": 5,
+     "paid": 5,
+     "sub": 0,
+     "single": 5,
+     "comp": 0,
+     "rev": 188,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 6,
+     "paid": 6,
+     "sub": 0,
+     "single": 6,
+     "comp": 0,
+     "rev": 202,
+     "promo": 0
+    }
+   }
+  },
+  "2456APKHQHDTVKQBTNLMQTLNHDRMLVNLL": {
+   "id": "2456APKHQHDTVKQBTNLMQTLNHDRMLVNLL",
+   "name": "Stones in His Pockets",
+   "first": "2023-08-11T19:00",
+   "last": "2023-08-27T14:00",
+   "perfs": 14,
+   "t": 6,
+   "comp": 6,
+   "paid": 0,
+   "sub": 0,
+   "single": 0,
+   "adu": 0,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 0,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 4,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 4,
+     "rev": 0,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 2,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 2,
+     "rev": 0,
+     "promo": 0
+    }
+   }
+  },
+  "2545AMHLDQRGSJHCNTQGNLCDKMQRDQJHJ": {
+   "id": "2545AMHLDQRGSJHCNTQGNLCDKMQRDQJHJ",
+   "name": "Nunsense",
+   "first": "2023-09-15T19:00",
+   "last": "2023-10-15T14:00",
+   "perfs": 24,
+   "t": 6,
+   "comp": 6,
+   "paid": 0,
+   "sub": 0,
+   "single": 0,
+   "adu": 0,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 0,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 4,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 4,
+     "rev": 0,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 2,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 2,
+     "rev": 0,
+     "promo": 0
+    }
+   }
+  },
+  "2557AHMVVBBPNPCBBCBCJBCKKBKDRVHNT": {
+   "id": "2557AHMVVBBPNPCBBCBCJBCKKBKDRVHNT",
+   "name": "What the Constitution Means to Me",
+   "first": "2024-03-29T19:00",
+   "last": "2024-04-14T14:00",
+   "perfs": 14,
+   "t": 6,
+   "comp": 6,
+   "paid": 0,
+   "sub": 0,
+   "single": 0,
+   "adu": 0,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 0,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 4,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 4,
+     "rev": 0,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 2,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 2,
+     "rev": 0,
+     "promo": 0
+    }
+   }
+  },
+  "2666APDSMVLGRJBVGBVCNQMVHCPJGMGQG": {
+   "id": "2666APDSMVLGRJBVGBVCNQMVHCPJGMGQG",
+   "name": "23-24 Mainstage Season Ticket Subscription",
+   "first": "2024-06-30T19:30",
+   "last": "2024-06-30T19:30",
+   "perfs": 1,
+   "t": 4,
+   "comp": 0,
+   "paid": 4,
+   "sub": 0,
+   "single": 4,
+   "adu": 4,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 800,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-05": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 400,
+     "promo": 0
+    },
+    "2024-06": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 400,
+     "promo": 0
+    }
+   }
+  },
+  "2616ABDSVGSHRNBMJDJJMPRTSNGDJDGQV": {
+   "id": "2616ABDSVGSHRNBMJDJJMPRTSNGDJDGQV",
+   "name": "Beehive Bash! - Gala Night",
+   "first": "2024-02-16T18:00",
+   "last": "2024-02-16T18:00",
+   "perfs": 1,
+   "t": 2,
+   "comp": 0,
+   "paid": 2,
+   "sub": 0,
+   "single": 2,
+   "adu": 2,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 280,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-06": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 280,
+     "promo": 0
+    }
+   }
+  },
+  "2469ACKRTKGGMRDBQHNCSKHGPGKHQVSQK": {
+   "id": "2469ACKRTKGGMRDBQHNCSKHGPGKHQVSQK",
+   "name": "Honk Jr.",
+   "first": "2023-07-14T19:00",
+   "last": "2023-07-23T14:00",
+   "perfs": 10,
+   "t": 2,
+   "comp": 0,
+   "paid": 2,
+   "sub": 0,
+   "single": 2,
+   "adu": 2,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 46,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-06": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 46,
+     "promo": 0
+    }
+   }
+  },
+  "2438AHQMRLDGLDQSPQJBJHBSPNKRRDJHM": {
+   "id": "2438AHQMRLDGLDQSPQJBJHBSPNKRRDJHM",
+   "name": "Fortinbras",
+   "first": "2024-09-20T19:00",
+   "last": "2024-09-21T19:00",
+   "perfs": 3,
+   "t": 58,
+   "comp": 58,
+   "paid": 0,
+   "sub": 0,
+   "single": 0,
+   "adu": 0,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 0,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2024-06": {
+     "t": 2,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 2,
+     "rev": 0,
+     "promo": 0
+    },
+    "2024-08": {
+     "t": 9,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 9,
+     "rev": 0,
+     "promo": 0
+    },
+    "2024-09": {
+     "t": 47,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 47,
+     "rev": 0,
+     "promo": 0
+    }
+   }
+  },
+  "2001AHRPHKQVSMKGSDJKJQJCLGRKHBSVV": {
+   "id": "2001AHRPHKQVSMKGSDJKJQJCLGRKHBSVV",
+   "name": "A Christmas Story",
+   "first": "2025-11-21T19:00",
+   "last": "2025-12-21T19:00",
+   "perfs": 23,
+   "t": 1807,
+   "comp": 203,
+   "paid": 1604,
+   "sub": 41,
+   "single": 1563,
+   "adu": 1042,
+   "sen": 213,
+   "stu": 307,
+   "grp": 42,
+   "rev": 64670,
+   "disc": 1180,
+   "discounted": 219,
+   "offers": {
+    "5ARQTDGSNKJJVRRSHGCCPRSSKDKCRMCQS": {
+     "t": 30,
+     "disc": 300,
+     "rev": 1072,
+     "face": 1282,
+     "byMonth": {
+      "2025-09": 17,
+      "2025-10": 1,
+      "2025-11": 6,
+      "2025-12": 6
+     },
+     "types": {
+      "Adult": 30
+     }
+    },
+    "4ACBGKTGSSSRMNPHTKMSMPGGVGMDGPCMB": {
+     "t": 176,
+     "disc": 880,
+     "rev": 6848,
+     "face": 7200,
+     "byMonth": {
+      "2025-10": 20,
+      "2025-11": 112,
+      "2025-12": 44
+     },
+     "types": {
+      "Senior": 26,
+      "Adult": 150
+     }
+    }
+   },
+   "byMonth": {
+    "2024-11": {
+     "t": 1,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 1,
+     "rev": 0,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 26,
+     "paid": 24,
+     "sub": 24,
+     "single": 0,
+     "comp": 2,
+     "rev": 1014,
+     "promo": 0
+    },
+    "2025-07": {
+     "t": 44,
+     "paid": 44,
+     "sub": 17,
+     "single": 27,
+     "comp": 0,
+     "rev": 1836,
+     "promo": 0
+    },
+    "2025-08": {
+     "t": 117,
+     "paid": 65,
+     "sub": 0,
+     "single": 65,
+     "comp": 52,
+     "rev": 2771,
+     "promo": 0
+    },
+    "2025-09": {
+     "t": 71,
+     "paid": 65,
+     "sub": 0,
+     "single": 65,
+     "comp": 6,
+     "rev": 2777,
+     "promo": 17
+    },
+    "2025-10": {
+     "t": 205,
+     "paid": 176,
+     "sub": 0,
+     "single": 176,
+     "comp": 29,
+     "rev": 7295,
+     "promo": 21
+    },
+    "2025-11": {
+     "t": 918,
+     "paid": 857,
+     "sub": 0,
+     "single": 857,
+     "comp": 61,
+     "rev": 34499,
+     "promo": 118
+    },
+    "2025-12": {
+     "t": 425,
+     "paid": 373,
+     "sub": 0,
+     "single": 373,
+     "comp": 52,
+     "rev": 14478,
+     "promo": 50
+    }
+   }
+  },
+  "401ANPJQJQPQMRSBDNMVNLSPGTRBVQVRH": {
+   "id": "401ANPJQJQPQMRSBDNMVNLSPGTRBVQVRH",
+   "name": "Unnecessary Farce",
+   "first": "2025-10-24T19:00",
+   "last": "2025-11-09T14:00",
+   "perfs": 16,
+   "t": 1533,
+   "comp": 188,
+   "paid": 1345,
+   "sub": 462,
+   "single": 883,
+   "adu": 964,
+   "sen": 251,
+   "stu": 130,
+   "grp": 0,
+   "rev": 54220,
+   "disc": 550,
+   "discounted": 573,
+   "offers": {
+    "6AQNSNRKSQRBNMRNLPTHHKVKCDTVSMTPV": {
+     "t": 84,
+     "disc": 420,
+     "rev": 3031,
+     "face": 3199,
+     "byMonth": {
+      "2025-09": 11,
+      "2025-10": 71,
+      "2025-11": 2
+     },
+     "types": {
+      "Senior": 24,
+      "Adult": 51,
+      "Student w/ID": 9
+     }
+    },
+    "7ALGBGVBCLVTGKNVNRTJPVKGBSPNGQPMK": {
+     "t": 13,
+     "disc": 130,
+     "rev": 414,
+     "face": 505,
+     "byMonth": {
+      "2025-10": 13
+     },
+     "types": {
+      "Adult": 9,
+      "Student w/ID": 2,
+      "Senior": 2
+     }
+    }
+   },
+   "byMonth": {
+    "2025-05": {
+     "t": 4,
+     "paid": 4,
+     "sub": 4,
+     "single": 0,
+     "comp": 0,
+     "rev": 160,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 295,
+     "paid": 260,
+     "sub": 256,
+     "single": 4,
+     "comp": 35,
+     "rev": 10440,
+     "promo": 0
+    },
+    "2025-07": {
+     "t": 272,
+     "paid": 259,
+     "sub": 164,
+     "single": 95,
+     "comp": 13,
+     "rev": 10748,
+     "promo": 0
+    },
+    "2025-08": {
+     "t": 91,
+     "paid": 86,
+     "sub": 32,
+     "single": 54,
+     "comp": 5,
+     "rev": 3623,
+     "promo": 0
+    },
+    "2025-09": {
+     "t": 109,
+     "paid": 89,
+     "sub": 6,
+     "single": 83,
+     "comp": 20,
+     "rev": 3800,
+     "promo": 11
+    },
+    "2025-10": {
+     "t": 661,
+     "paid": 577,
+     "sub": 0,
+     "single": 577,
+     "comp": 84,
+     "rev": 22704,
+     "promo": 84
+    },
+    "2025-11": {
+     "t": 101,
+     "paid": 70,
+     "sub": 0,
+     "single": 70,
+     "comp": 31,
+     "rev": 2745,
+     "promo": 2
+    }
+   }
+  },
+  "601APNNMRMBJQQPBSCNQGQHGKKCRPSSGN": {
+   "id": "601APNNMRMBJQQPBSCNQGQHGKKCRPSSGN",
+   "name": "Who's Afraid of Virginia Woolf",
+   "first": "2026-03-27T19:00",
+   "last": "2026-04-12T14:00",
+   "perfs": 14,
+   "t": 1232,
+   "comp": 226,
+   "paid": 1006,
+   "sub": 441,
+   "single": 565,
+   "adu": 852,
+   "sen": 122,
+   "stu": 22,
+   "grp": 10,
+   "rev": 41100,
+   "disc": 695,
+   "discounted": 547,
+   "offers": {
+    "9ANPCNMSHVHMCHHTDBKKCSVLVSDSRHCQV": {
+     "t": 2,
+     "disc": 10,
+     "rev": 80,
+     "face": 84,
+     "byMonth": {
+      "2026-01": 2
+     },
+     "types": {
+      "Adult": 2
+     }
+    },
+    "14APJHBGRLSMCQDRMPCDGRMHLNMDCKJHC": {
+     "t": 48,
+     "disc": 480,
+     "rev": 1607,
+     "face": 1943,
+     "byMonth": {
+      "2026-03": 45,
+      "2026-04": 3
+     },
+     "types": {
+      "Adult": 43,
+      "Senior": 5
+     }
+    },
+    "13ALDRSBVSVMMHLJVVKVLNHRNKSNCTKRS": {
+     "t": 41,
+     "disc": 205,
+     "rev": 1483,
+     "face": 1565,
+     "byMonth": {
+      "2026-04": 41
+     },
+     "types": {
+      "Student w/ID": 3,
+      "Adult": 33,
+      "Senior": 5
+     }
+    }
+   },
+   "byMonth": {
+    "2025-05": {
+     "t": 4,
+     "paid": 4,
+     "sub": 4,
+     "single": 0,
+     "comp": 0,
+     "rev": 160,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 287,
+     "paid": 253,
+     "sub": 251,
+     "single": 2,
+     "comp": 34,
+     "rev": 10140,
+     "promo": 0
+    },
+    "2025-07": {
+     "t": 186,
+     "paid": 178,
+     "sub": 150,
+     "single": 28,
+     "comp": 8,
+     "rev": 7224,
+     "promo": 0
+    },
+    "2025-08": {
+     "t": 42,
+     "paid": 42,
+     "sub": 28,
+     "single": 14,
+     "comp": 0,
+     "rev": 1695,
+     "promo": 0
+    },
+    "2025-09": {
+     "t": 8,
+     "paid": 8,
+     "sub": 8,
+     "single": 0,
+     "comp": 0,
+     "rev": 320,
+     "promo": 0
+    },
+    "2025-10": {
+     "t": 19,
+     "paid": 17,
+     "sub": 0,
+     "single": 17,
+     "comp": 2,
+     "rev": 687,
+     "promo": 0
+    },
+    "2025-11": {
+     "t": 17,
+     "paid": 15,
+     "sub": 0,
+     "single": 15,
+     "comp": 2,
+     "rev": 651,
+     "promo": 0
+    },
+    "2025-12": {
+     "t": 10,
+     "paid": 10,
+     "sub": 0,
+     "single": 10,
+     "comp": 0,
+     "rev": 442,
+     "promo": 0
+    },
+    "2026-01": {
+     "t": 34,
+     "paid": 22,
+     "sub": 0,
+     "single": 22,
+     "comp": 12,
+     "rev": 965,
+     "promo": 2
+    },
+    "2026-02": {
+     "t": 50,
+     "paid": 29,
+     "sub": 0,
+     "single": 29,
+     "comp": 21,
+     "rev": 1280,
+     "promo": 0
+    },
+    "2026-03": {
+     "t": 303,
+     "paid": 255,
+     "sub": 0,
+     "single": 255,
+     "comp": 48,
+     "rev": 10551,
+     "promo": 45
+    },
+    "2026-04": {
+     "t": 272,
+     "paid": 173,
+     "sub": 0,
+     "single": 173,
+     "comp": 99,
+     "rev": 6985,
+     "promo": 44
+    }
+   }
+  },
+  "201AGBHDRLQHNHPHKKMPKLGPMDRDTDMVL": {
+   "id": "201AGBHDRLQHNHPHKKMPKLGPMDRDTDMVL",
+   "name": "I Love You, You're Perfect, Now Change",
+   "first": "2025-08-22T19:00",
+   "last": "2025-09-21T14:00",
+   "perfs": 24,
+   "t": 1916,
+   "comp": 221,
+   "paid": 1695,
+   "sub": 463,
+   "single": 1232,
+   "adu": 1211,
+   "sen": 433,
+   "stu": 51,
+   "grp": 0,
+   "rev": 74190,
+   "disc": 670,
+   "discounted": 618,
+   "offers": {
+    "1AHGJDSMMPLMPPGNLJBQVLBRSKVDLQRPP": {
+     "t": 134,
+     "disc": 670,
+     "rev": 5482,
+     "face": 5750,
+     "byMonth": {
+      "2025-08": 73,
+      "2025-09": 61
+     },
+     "types": {
+      "Adult": 73,
+      "Senior": 56,
+      "Student w/ID": 5
+     }
+    }
+   },
+   "byMonth": {
+    "2025-05": {
+     "t": 4,
+     "paid": 4,
+     "sub": 4,
+     "single": 0,
+     "comp": 0,
+     "rev": 160,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 308,
+     "paid": 261,
+     "sub": 259,
+     "single": 2,
+     "comp": 47,
+     "rev": 10465,
+     "promo": 0
+    },
+    "2025-07": {
+     "t": 389,
+     "paid": 372,
+     "sub": 166,
+     "single": 206,
+     "comp": 17,
+     "rev": 16199,
+     "promo": 0
+    },
+    "2025-08": {
+     "t": 760,
+     "paid": 670,
+     "sub": 28,
+     "single": 642,
+     "comp": 90,
+     "rev": 30028,
+     "promo": 73
+    },
+    "2025-09": {
+     "t": 455,
+     "paid": 388,
+     "sub": 6,
+     "single": 382,
+     "comp": 67,
+     "rev": 17338,
+     "promo": 61
+    }
+   }
+  },
+  "801ARDQDDMGGJKKRTNTJBMCCMMBCPQKCR": {
+   "id": "801ARDQDDMGGJKKRTNTJBMCCMMBCPQKCR",
+   "name": "The Lifespan of a Fact",
+   "first": "2026-05-01T19:00",
+   "last": "2026-05-17T14:00",
+   "perfs": 14,
+   "t": 1204,
+   "comp": 196,
+   "paid": 1008,
+   "sub": 453,
+   "single": 555,
+   "adu": 835,
+   "sen": 129,
+   "stu": 44,
+   "grp": 0,
+   "rev": 40967,
+   "disc": 593,
+   "discounted": 585,
+   "offers": {
+    "9ANPCNMSHVHMCHHTDBKKCSVLVSDSRHCQV": {
+     "t": 3,
+     "disc": 15,
+     "rev": 122,
+     "face": 128,
+     "byMonth": {
+      "2026-02": 3
+     },
+     "types": {
+      "Adult": 3
+     }
+    },
+    "15ALVMQHNVHKNVGHKKKPDSCQQQKBTCGJB": {
+     "t": 113,
+     "disc": 565,
+     "rev": 4238,
+     "face": 4464,
+     "byMonth": {
+      "2026-04": 30,
+      "2026-05": 83
+     },
+     "types": {
+      "Senior": 23,
+      "Adult": 84,
+      "Student w/ID": 6
+     }
+    },
+    "12ALHBQPQHVNTRMMBMPTSQKMSKQCDMCPT": {
+     "t": 1,
+     "disc": 13,
+     "rev": 16,
+     "face": 25,
+     "byMonth": {
+      "2026-05": 1
+     },
+     "types": {
+      "Student w/ID": 1
+     }
+    }
+   },
+   "byMonth": {
+    "2025-05": {
+     "t": 4,
+     "paid": 4,
+     "sub": 4,
+     "single": 0,
+     "comp": 0,
+     "rev": 160,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 294,
+     "paid": 257,
+     "sub": 255,
+     "single": 2,
+     "comp": 37,
+     "rev": 10304,
+     "promo": 0
+    },
+    "2025-07": {
+     "t": 205,
+     "paid": 197,
+     "sub": 158,
+     "single": 39,
+     "comp": 8,
+     "rev": 7993,
+     "promo": 0
+    },
+    "2025-08": {
+     "t": 44,
+     "paid": 43,
+     "sub": 29,
+     "single": 14,
+     "comp": 1,
+     "rev": 1745,
+     "promo": 0
+    },
+    "2025-09": {
+     "t": 7,
+     "paid": 7,
+     "sub": 7,
+     "single": 0,
+     "comp": 0,
+     "rev": 282,
+     "promo": 0
+    },
+    "2025-10": {
+     "t": 9,
+     "paid": 8,
+     "sub": 0,
+     "single": 8,
+     "comp": 1,
+     "rev": 338,
+     "promo": 0
+    },
+    "2025-11": {
+     "t": 6,
+     "paid": 3,
+     "sub": 0,
+     "single": 3,
+     "comp": 3,
+     "rev": 137,
+     "promo": 0
+    },
+    "2025-12": {
+     "t": 6,
+     "paid": 6,
+     "sub": 0,
+     "single": 6,
+     "comp": 0,
+     "rev": 266,
+     "promo": 0
+    },
+    "2026-01": {
+     "t": 9,
+     "paid": 3,
+     "sub": 0,
+     "single": 3,
+     "comp": 6,
+     "rev": 135,
+     "promo": 0
+    },
+    "2026-02": {
+     "t": 22,
+     "paid": 20,
+     "sub": 0,
+     "single": 20,
+     "comp": 2,
+     "rev": 877,
+     "promo": 3
+    },
+    "2026-03": {
+     "t": 31,
+     "paid": 26,
+     "sub": 0,
+     "single": 26,
+     "comp": 5,
+     "rev": 1132,
+     "promo": 0
+    },
+    "2026-04": {
+     "t": 170,
+     "paid": 136,
+     "sub": 0,
+     "single": 136,
+     "comp": 34,
+     "rev": 5538,
+     "promo": 30
+    },
+    "2026-05": {
+     "t": 397,
+     "paid": 298,
+     "sub": 0,
+     "single": 298,
+     "comp": 99,
+     "rev": 12060,
+     "promo": 84
+    }
+   }
+  },
+  "1201AQKTLDJVPVNVGVNTLHSSDPLSGRGBT": {
+   "id": "1201AQKTLDJVPVNVGVNTLHSSDPLSGRGBT",
+   "name": "Seussical: The Musical Jr.",
+   "first": "2025-07-17T19:00",
+   "last": "2025-07-27T14:00",
+   "perfs": 10,
+   "t": 916,
+   "comp": 107,
+   "paid": 809,
+   "sub": 45,
+   "single": 764,
+   "adu": 632,
+   "sen": 0,
+   "stu": 177,
+   "grp": 0,
+   "rev": 21631,
+   "disc": 0,
+   "discounted": 2,
+   "offers": {},
+   "byMonth": {
+    "2025-05": {
+     "t": 2,
+     "paid": 2,
+     "sub": 2,
+     "single": 0,
+     "comp": 0,
+     "rev": 50,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 30,
+     "paid": 27,
+     "sub": 25,
+     "single": 2,
+     "comp": 3,
+     "rev": 689,
+     "promo": 0
+    },
+    "2025-07": {
+     "t": 884,
+     "paid": 780,
+     "sub": 18,
+     "single": 762,
+     "comp": 104,
+     "rev": 20892,
+     "promo": 0
+    }
+   }
+  },
+  "1601APDLPHDNDHQKCQVBHMDTSQVKMKLPQ": {
+   "id": "1601APDLPHDNDHQKCQVBHMDTSQVKMKLPQ",
+   "name": "Staged Reading: Fortinbras",
+   "first": "2025-09-26T19:00",
+   "last": "2025-09-27T19:00",
+   "perfs": 3,
+   "t": 289,
+   "comp": 74,
+   "paid": 215,
+   "sub": 76,
+   "single": 139,
+   "adu": 215,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 4259,
+   "disc": 0,
+   "discounted": 19,
+   "offers": {},
+   "byMonth": {
+    "2025-05": {
+     "t": 1,
+     "paid": 1,
+     "sub": 1,
+     "single": 0,
+     "comp": 0,
+     "rev": 19,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 52,
+     "paid": 46,
+     "sub": 46,
+     "single": 0,
+     "comp": 6,
+     "rev": 873,
+     "promo": 0
+    },
+    "2025-07": {
+     "t": 29,
+     "paid": 29,
+     "sub": 25,
+     "single": 4,
+     "comp": 0,
+     "rev": 567,
+     "promo": 0
+    },
+    "2025-08": {
+     "t": 21,
+     "paid": 14,
+     "sub": 4,
+     "single": 10,
+     "comp": 7,
+     "rev": 282,
+     "promo": 0
+    },
+    "2025-09": {
+     "t": 186,
+     "paid": 125,
+     "sub": 0,
+     "single": 125,
+     "comp": 61,
+     "rev": 2518,
+     "promo": 0
+    }
+   }
+  },
+  "1402ALKJJBVJTRJMSBNDSNBMPGGLSNNLQ": {
+   "id": "1402ALKJJBVJTRJMSBNDSNBMPGGLSNNLQ",
+   "name": "Staged Reading: Luna Gale",
+   "first": "2025-08-01T19:00",
+   "last": "2025-08-02T19:00",
+   "perfs": 3,
+   "t": 182,
+   "comp": 50,
+   "paid": 132,
+   "sub": 73,
+   "single": 59,
+   "adu": 132,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 2617,
+   "disc": 0,
+   "discounted": 26,
+   "offers": {},
+   "byMonth": {
+    "2025-05": {
+     "t": 1,
+     "paid": 1,
+     "sub": 1,
+     "single": 0,
+     "comp": 0,
+     "rev": 19,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 47,
+     "paid": 41,
+     "sub": 41,
+     "single": 0,
+     "comp": 6,
+     "rev": 779,
+     "promo": 0
+    },
+    "2025-07": {
+     "t": 84,
+     "paid": 58,
+     "sub": 30,
+     "single": 28,
+     "comp": 26,
+     "rev": 1145,
+     "promo": 0
+    },
+    "2025-08": {
+     "t": 50,
+     "paid": 32,
+     "sub": 1,
+     "single": 31,
+     "comp": 18,
+     "rev": 674,
+     "promo": 0
+    }
+   }
+  },
+  "1002AHCBPDSTCNNKTDJHQGSBVHKNHQLMG": {
+   "id": "1002AHCBPDSTCNNKTDJHQGSBVHKNHQLMG",
+   "name": "Staged Reading: Anthropology",
+   "first": "2026-01-23T19:00",
+   "last": "2026-01-24T19:00",
+   "perfs": 3,
+   "t": 264,
+   "comp": 64,
+   "paid": 200,
+   "sub": 75,
+   "single": 125,
+   "adu": 200,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 4006,
+   "disc": 0,
+   "discounted": 25,
+   "offers": {},
+   "byMonth": {
+    "2025-05": {
+     "t": 1,
+     "paid": 1,
+     "sub": 1,
+     "single": 0,
+     "comp": 0,
+     "rev": 19,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 51,
+     "paid": 45,
+     "sub": 43,
+     "single": 2,
+     "comp": 6,
+     "rev": 863,
+     "promo": 0
+    },
+    "2025-07": {
+     "t": 31,
+     "paid": 31,
+     "sub": 28,
+     "single": 3,
+     "comp": 0,
+     "rev": 595,
+     "promo": 0
+    },
+    "2025-08": {
+     "t": 3,
+     "paid": 3,
+     "sub": 3,
+     "single": 0,
+     "comp": 0,
+     "rev": 55,
+     "promo": 0
+    },
+    "2025-09": {
+     "t": 4,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 2,
+     "rev": 38,
+     "promo": 0
+    },
+    "2025-10": {
+     "t": 5,
+     "paid": 3,
+     "sub": 0,
+     "single": 3,
+     "comp": 2,
+     "rev": 60,
+     "promo": 0
+    },
+    "2025-11": {
+     "t": 1,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 1,
+     "rev": 0,
+     "promo": 0
+    },
+    "2025-12": {
+     "t": 3,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 1,
+     "rev": 46,
+     "promo": 0
+    },
+    "2026-01": {
+     "t": 165,
+     "paid": 113,
+     "sub": 0,
+     "single": 113,
+     "comp": 52,
+     "rev": 2330,
+     "promo": 0
+    }
+   }
+  },
+  "2201AVBSMNJRLVSBVJRSDNQHLHDGPHDLD": {
+   "id": "2201AVBSMNJRLVSBVJRSDNQHLHDGPHDLD",
+   "name": "Staged Reading: Love Alone",
+   "first": "2026-04-17T19:00",
+   "last": "2026-04-18T19:00",
+   "perfs": 3,
+   "t": 226,
+   "comp": 87,
+   "paid": 139,
+   "sub": 66,
+   "single": 73,
+   "adu": 139,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 2759,
+   "disc": 0,
+   "discounted": 26,
+   "offers": {},
+   "byMonth": {
+    "2025-05": {
+     "t": 1,
+     "paid": 1,
+     "sub": 1,
+     "single": 0,
+     "comp": 0,
+     "rev": 19,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 48,
+     "paid": 40,
+     "sub": 38,
+     "single": 2,
+     "comp": 8,
+     "rev": 768,
+     "promo": 0
+    },
+    "2025-07": {
+     "t": 30,
+     "paid": 28,
+     "sub": 25,
+     "single": 3,
+     "comp": 2,
+     "rev": 532,
+     "promo": 0
+    },
+    "2025-08": {
+     "t": 2,
+     "paid": 2,
+     "sub": 2,
+     "single": 0,
+     "comp": 0,
+     "rev": 36,
+     "promo": 0
+    },
+    "2025-09": {
+     "t": 4,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 2,
+     "rev": 38,
+     "promo": 0
+    },
+    "2025-10": {
+     "t": 2,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 2,
+     "rev": 0,
+     "promo": 0
+    },
+    "2025-11": {
+     "t": 1,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 1,
+     "rev": 0,
+     "promo": 0
+    },
+    "2026-01": {
+     "t": 6,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 2,
+     "rev": 84,
+     "promo": 0
+    },
+    "2026-02": {
+     "t": 8,
+     "paid": 3,
+     "sub": 0,
+     "single": 3,
+     "comp": 5,
+     "rev": 69,
+     "promo": 0
+    },
+    "2026-03": {
+     "t": 19,
+     "paid": 7,
+     "sub": 0,
+     "single": 7,
+     "comp": 12,
+     "rev": 144,
+     "promo": 0
+    },
+    "2026-04": {
+     "t": 105,
+     "paid": 52,
+     "sub": 0,
+     "single": 52,
+     "comp": 53,
+     "rev": 1069,
+     "promo": 0
+    }
+   }
+  },
+  "1801APGQPRKNVLCHGSKJBCTJKDRMGPLNL": {
+   "id": "1801APGQPRKNVLCHGSKJBCTJKDRMGPLNL",
+   "name": "Staged Reading: Wife of a Salesman",
+   "first": "2026-03-13T19:00",
+   "last": "2026-03-14T19:00",
+   "perfs": 3,
+   "t": 303,
+   "comp": 59,
+   "paid": 244,
+   "sub": 73,
+   "single": 171,
+   "adu": 244,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 4834,
+   "disc": 0,
+   "discounted": 28,
+   "offers": {},
+   "byMonth": {
+    "2025-05": {
+     "t": 1,
+     "paid": 1,
+     "sub": 1,
+     "single": 0,
+     "comp": 0,
+     "rev": 19,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 52,
+     "paid": 44,
+     "sub": 42,
+     "single": 2,
+     "comp": 8,
+     "rev": 845,
+     "promo": 0
+    },
+    "2025-07": {
+     "t": 32,
+     "paid": 30,
+     "sub": 27,
+     "single": 3,
+     "comp": 2,
+     "rev": 576,
+     "promo": 0
+    },
+    "2025-08": {
+     "t": 3,
+     "paid": 3,
+     "sub": 3,
+     "single": 0,
+     "comp": 0,
+     "rev": 55,
+     "promo": 0
+    },
+    "2025-09": {
+     "t": 4,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 2,
+     "rev": 38,
+     "promo": 0
+    },
+    "2025-10": {
+     "t": 2,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 2,
+     "rev": 0,
+     "promo": 0
+    },
+    "2025-12": {
+     "t": 2,
+     "paid": 2,
+     "sub": 0,
+     "single": 2,
+     "comp": 0,
+     "rev": 42,
+     "promo": 0
+    },
+    "2026-01": {
+     "t": 22,
+     "paid": 9,
+     "sub": 0,
+     "single": 9,
+     "comp": 13,
+     "rev": 183,
+     "promo": 0
+    },
+    "2026-02": {
+     "t": 34,
+     "paid": 29,
+     "sub": 0,
+     "single": 29,
+     "comp": 5,
+     "rev": 603,
+     "promo": 0
+    },
+    "2026-03": {
+     "t": 151,
+     "paid": 124,
+     "sub": 0,
+     "single": 124,
+     "comp": 27,
+     "rev": 2473,
+     "promo": 0
+    }
+   }
+  },
+  "1001ADGKSHLJDTDBJQTBMGLLJRLBJCMNN": {
+   "id": "1001ADGKSHLJDTDBJQTBMGLLJRLBJCMNN",
+   "name": "A Grand Night for Singing",
+   "first": "2026-06-05T19:00",
+   "last": "2026-06-28T14:00",
+   "perfs": 22,
+   "t": 1652,
+   "comp": 288,
+   "paid": 1364,
+   "sub": 439,
+   "single": 925,
+   "adu": 992,
+   "sen": 280,
+   "stu": 53,
+   "grp": 39,
+   "rev": 58712,
+   "disc": 565,
+   "discounted": 552,
+   "offers": {
+    "9ANPCNMSHVHMCHHTDBKKCSVLVSDSRHCQV": {
+     "t": 2,
+     "disc": 10,
+     "rev": 86,
+     "face": 90,
+     "byMonth": {
+      "2026-02": 2
+     },
+     "types": {
+      "Adult": 2
+     }
+    },
+    "12ALHBQPQHVNTRMMBMPTSQKMSKQCDMCPT": {
+     "t": 4,
+     "disc": 90,
+     "rev": 102,
+     "face": 180,
+     "byMonth": {
+      "2026-05": 4
+     },
+     "types": {
+      "Adult": 4
+     }
+    },
+    "17ANTVBKSJJNBKDLKVKCLRBBMBGKQTPQP": {
+     "t": 18,
+     "disc": 180,
+     "rev": 628,
+     "face": 754,
+     "byMonth": {
+      "2026-05": 5,
+      "2026-06": 13
+     },
+     "types": {
+      "Senior": 2,
+      "Adult": 15,
+      "Student w/ID": 1
+     }
+    },
+    "16AGNRGGPHKCBJCGCPJVSVJGLGRSMGVLH": {
+     "t": 57,
+     "disc": 285,
+     "rev": 2287,
+     "face": 2401,
+     "byMonth": {
+      "2026-06": 57
+     },
+     "types": {
+      "Senior": 15,
+      "Adult": 37,
+      "Student w/ID": 5
+     }
+    }
+   },
+   "byMonth": {
+    "2025-05": {
+     "t": 2,
+     "paid": 2,
+     "sub": 2,
+     "single": 0,
+     "comp": 0,
+     "rev": 80,
+     "promo": 0
+    },
+    "2025-06": {
+     "t": 284,
+     "paid": 250,
+     "sub": 250,
+     "single": 0,
+     "comp": 34,
+     "rev": 10006,
+     "promo": 0
+    },
+    "2025-07": {
+     "t": 234,
+     "paid": 226,
+     "sub": 153,
+     "single": 73,
+     "comp": 8,
+     "rev": 9486,
+     "promo": 0
+    },
+    "2025-08": {
+     "t": 76,
+     "paid": 75,
+     "sub": 28,
+     "single": 47,
+     "comp": 1,
+     "rev": 3186,
+     "promo": 0
+    },
+    "2025-09": {
+     "t": 8,
+     "paid": 8,
+     "sub": 6,
+     "single": 2,
+     "comp": 0,
+     "rev": 340,
+     "promo": 0
+    },
+    "2025-10": {
+     "t": 12,
+     "paid": 9,
+     "sub": 0,
+     "single": 9,
+     "comp": 3,
+     "rev": 404,
+     "promo": 0
+    },
+    "2025-11": {
+     "t": 6,
+     "paid": 4,
+     "sub": 0,
+     "single": 4,
+     "comp": 2,
+     "rev": 192,
+     "promo": 0
+    },
+    "2025-12": {
+     "t": 3,
+     "paid": 3,
+     "sub": 0,
+     "single": 3,
+     "comp": 0,
+     "rev": 140,
+     "promo": 0
+    },
+    "2026-01": {
+     "t": 28,
+     "paid": 24,
+     "sub": 0,
+     "single": 24,
+     "comp": 4,
+     "rev": 1142,
+     "promo": 0
+    },
+    "2026-02": {
+     "t": 12,
+     "paid": 12,
+     "sub": 0,
+     "single": 12,
+     "comp": 0,
+     "rev": 564,
+     "promo": 2
+    },
+    "2026-03": {
+     "t": 36,
+     "paid": 36,
+     "sub": 0,
+     "single": 36,
+     "comp": 0,
+     "rev": 1632,
+     "promo": 0
+    },
+    "2026-04": {
+     "t": 83,
+     "paid": 71,
+     "sub": 0,
+     "single": 71,
+     "comp": 12,
+     "rev": 3262,
+     "promo": 0
+    },
+    "2026-05": {
+     "t": 230,
+     "paid": 171,
+     "sub": 0,
+     "single": 171,
+     "comp": 59,
+     "rev": 7782,
+     "promo": 9
+    },
+    "2026-06": {
+     "t": 638,
+     "paid": 473,
+     "sub": 0,
+     "single": 473,
+     "comp": 165,
+     "rev": 20496,
+     "promo": 70
+    }
+   }
+  },
+  "602AMNRTHHBLJSTLSJRDJBQTLQHMVHVVR": {
+   "id": "602AMNRTHHBLJSTLSJRDJBQTLQHMVHVVR",
+   "name": "Million Dollar Quartet",
+   "first": "2026-01-30T19:00",
+   "last": "2026-03-08T14:00",
+   "perfs": 34,
+   "t": 3280,
+   "comp": 278,
+   "paid": 3002,
+   "sub": 241,
+   "single": 2761,
+   "adu": 2850,
+   "sen": 0,
+   "stu": 84,
+   "grp": 68,
+   "rev": 169600,
+   "disc": 40,
+   "discounted": 258,
+   "offers": {
+    "10AHCMMGJDBRGBLCVJVHPHPHKCGVQBBJT": {
+     "t": 2,
+     "disc": 10,
+     "rev": 106,
+     "face": 110,
+     "byMonth": {
+      "2026-02": 2
+     },
+     "types": {
+      "Adult": 2
+     }
+    },
+    "11ARGCQBGHNJNMCJRHHSHSPVSKVGBMHKC": {
+     "t": 3,
+     "disc": 30,
+     "rev": 134,
+     "face": 155,
+     "byMonth": {
+      "2026-03": 3
+     },
+     "types": {
+      "Adult": 3
+     }
+    }
+   },
+   "byMonth": {
+    "2025-06": {
+     "t": 165,
+     "paid": 161,
+     "sub": 154,
+     "single": 7,
+     "comp": 4,
+     "rev": 8161,
+     "promo": 0
+    },
+    "2025-07": {
+     "t": 228,
+     "paid": 218,
+     "sub": 76,
+     "single": 142,
+     "comp": 10,
+     "rev": 12274,
+     "promo": 0
+    },
+    "2025-08": {
+     "t": 63,
+     "paid": 62,
+     "sub": 11,
+     "single": 51,
+     "comp": 1,
+     "rev": 3552,
+     "promo": 0
+    },
+    "2025-09": {
+     "t": 72,
+     "paid": 63,
+     "sub": 0,
+     "single": 63,
+     "comp": 9,
+     "rev": 3454,
+     "promo": 0
+    },
+    "2025-10": {
+     "t": 33,
+     "paid": 31,
+     "sub": 0,
+     "single": 31,
+     "comp": 2,
+     "rev": 1818,
+     "promo": 0
+    },
+    "2025-11": {
+     "t": 127,
+     "paid": 113,
+     "sub": 0,
+     "single": 113,
+     "comp": 14,
+     "rev": 6619,
+     "promo": 0
+    },
+    "2025-12": {
+     "t": 196,
+     "paid": 189,
+     "sub": 0,
+     "single": 189,
+     "comp": 7,
+     "rev": 11094,
+     "promo": 0
+    },
+    "2026-01": {
+     "t": 1188,
+     "paid": 1112,
+     "sub": 0,
+     "single": 1112,
+     "comp": 76,
+     "rev": 63996,
+     "promo": 0
+    },
+    "2026-02": {
+     "t": 1173,
+     "paid": 1029,
+     "sub": 0,
+     "single": 1029,
+     "comp": 144,
+     "rev": 57355,
+     "promo": 2
+    },
+    "2026-03": {
+     "t": 35,
+     "paid": 24,
+     "sub": 0,
+     "single": 24,
+     "comp": 11,
+     "rev": 1277,
+     "promo": 3
+    }
+   }
+  },
+  "1401AHPQBSMRKMCGHQKGHVQVKCQNVNBKN": {
+   "id": "1401AHPQBSMRKMCGHQKGHVQVKCQNVNBKN",
+   "name": "Clue (High School Edition)",
+   "first": "2026-01-09T19:00",
+   "last": "2026-01-18T14:00",
+   "perfs": 9,
+   "t": 929,
+   "comp": 106,
+   "paid": 823,
+   "sub": 56,
+   "single": 767,
+   "adu": 692,
+   "sen": 0,
+   "stu": 131,
+   "grp": 0,
+   "rev": 20661,
+   "disc": 0,
+   "discounted": 10,
+   "offers": {},
+   "byMonth": {
+    "2025-06": {
+     "t": 34,
+     "paid": 31,
+     "sub": 27,
+     "single": 4,
+     "comp": 3,
+     "rev": 749,
+     "promo": 0
+    },
+    "2025-07": {
+     "t": 60,
+     "paid": 54,
+     "sub": 25,
+     "single": 29,
+     "comp": 6,
+     "rev": 1350,
+     "promo": 0
+    },
+    "2025-08": {
+     "t": 19,
+     "paid": 19,
+     "sub": 4,
+     "single": 15,
+     "comp": 0,
+     "rev": 489,
+     "promo": 0
+    },
+    "2025-09": {
+     "t": 12,
+     "paid": 12,
+     "sub": 0,
+     "single": 12,
+     "comp": 0,
+     "rev": 299,
+     "promo": 0
+    },
+    "2025-10": {
+     "t": 15,
+     "paid": 9,
+     "sub": 0,
+     "single": 9,
+     "comp": 6,
+     "rev": 230,
+     "promo": 0
+    },
+    "2025-11": {
+     "t": 93,
+     "paid": 91,
+     "sub": 0,
+     "single": 91,
+     "comp": 2,
+     "rev": 2342,
+     "promo": 0
+    },
+    "2025-12": {
+     "t": 254,
+     "paid": 241,
+     "sub": 0,
+     "single": 241,
+     "comp": 13,
+     "rev": 6119,
+     "promo": 0
+    },
+    "2026-01": {
+     "t": 442,
+     "paid": 366,
+     "sub": 0,
+     "single": 366,
+     "comp": 76,
+     "rev": 9083,
+     "promo": 0
+    }
+   }
+  },
+  "2801AQDNLVMHMKCPBDVJNRVPGGRHGRKHB": {
+   "id": "2801AQDNLVMHMKCPBDVJNRVPGGRHGRKHB",
+   "name": "Benefit Night",
+   "first": "2026-01-29T19:00",
+   "last": "2026-01-29T19:00",
+   "perfs": 1,
+   "t": 97,
+   "comp": 97,
+   "paid": 0,
+   "sub": 0,
+   "single": 0,
+   "adu": 0,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 0,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2025-12": {
+     "t": 97,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 97,
+     "rev": 0,
+     "promo": 0
+    }
+   }
+  },
+  "3201AQVHRDTTMHKGVGSKKQQVCTJHSRSNR": {
+   "id": "3201AQVHRDTTMHKGVGSKKQQVCTJHSRSNR",
+   "name": "Gutenberg! The Musical!",
+   "first": "2026-10-09T19:00",
+   "last": "2026-11-08T14:00",
+   "perfs": 24,
+   "t": 1793,
+   "comp": 314,
+   "paid": 1479,
+   "sub": 500,
+   "single": 979,
+   "adu": 1160,
+   "sen": 234,
+   "stu": 85,
+   "grp": 0,
+   "rev": 63858,
+   "disc": 740,
+   "discounted": 640,
+   "offers": {
+    "25ADQCNLPMHRKBTRLLNQCBLGKQQKHLJQJ": {
+     "t": 34,
+     "disc": 340,
+     "rev": 1263,
+     "face": 1501,
+     "byMonth": {
+      "2026-09": 8,
+      "2026-10": 26
+     },
+     "types": {
+      "Senior": 6,
+      "Adult": 27,
+      "Student w/ID": 1
+     }
+    },
+    "12ALHBQPQHVNTRMMBMPTSQKMSKQCDMCPT": {
+     "t": 14,
+     "disc": 290,
+     "rev": 332,
+     "face": 580,
+     "byMonth": {
+      "2026-10": 14
+     },
+     "types": {
+      "Senior": 3,
+      "Student w/ID": 2,
+      "Adult": 9
+     }
+    },
+    "26ATSKNSVPSTVKMVRCMCPPTDSDDLCJPBC": {
+     "t": 11,
+     "disc": 110,
+     "rev": 404,
+     "face": 481,
+     "byMonth": {
+      "2026-10": 11
+     },
+     "types": {
+      "Senior": 3,
+      "Adult": 7,
+      "Student w/ID": 1
+     }
+    }
+   },
+   "byMonth": {
+    "2026-04": {
+     "t": 7,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 7,
+     "rev": 0,
+     "promo": 0
+    },
+    "2026-05": {
+     "t": 60,
+     "paid": 31,
+     "sub": 31,
+     "single": 0,
+     "comp": 29,
+     "rev": 1240,
+     "promo": 0
+    },
+    "2026-06": {
+     "t": 419,
+     "paid": 403,
+     "sub": 382,
+     "single": 21,
+     "comp": 16,
+     "rev": 16166,
+     "promo": 0
+    },
+    "2026-07": {
+     "t": 189,
+     "paid": 188,
+     "sub": 56,
+     "single": 132,
+     "comp": 1,
+     "rev": 8426,
+     "promo": 0
+    },
+    "2026-08": {
+     "t": 121,
+     "paid": 79,
+     "sub": 18,
+     "single": 61,
+     "comp": 42,
+     "rev": 3553,
+     "promo": 0
+    },
+    "2026-09": {
+     "t": 334,
+     "paid": 273,
+     "sub": 11,
+     "single": 262,
+     "comp": 61,
+     "rev": 12289,
+     "promo": 8
+    },
+    "2026-10": {
+     "t": 663,
+     "paid": 505,
+     "sub": 2,
+     "single": 503,
+     "comp": 158,
+     "rev": 22184,
+     "promo": 51
+    }
+   }
+  },
+  "3001AKGPBMSRNCDBJCGBHRDVVQRQLSLMV": {
+   "id": "3001AKGPBMSRNCDBJCGBHRDVVQRQLSLMV",
+   "name": "The Father",
+   "first": "2026-08-28T19:00",
+   "last": "2026-09-13T14:00",
+   "perfs": 14,
+   "t": 1154,
+   "comp": 195,
+   "paid": 959,
+   "sub": 470,
+   "single": 489,
+   "adu": 811,
+   "sen": 126,
+   "stu": 22,
+   "grp": 0,
+   "rev": 39516,
+   "disc": 313,
+   "discounted": 566,
+   "offers": {
+    "12ALHBQPQHVNTRMMBMPTSQKMSKQCDMCPT": {
+     "t": 2,
+     "disc": 43,
+     "rev": 49,
+     "face": 86,
+     "byMonth": {
+      "2026-08": 2
+     },
+     "types": {
+      "Adult": 2
+     }
+    },
+    "24AJBGJGGHQRVGRNGDVRQGPJRQDLGVCKR": {
+     "t": 18,
+     "disc": 270,
+     "rev": 528,
+     "face": 744,
+     "byMonth": {
+      "2026-09": 18
+     },
+     "types": {
+      "Adult": 12,
+      "Senior": 6
+     }
+    }
+   },
+   "byMonth": {
+    "2026-04": {
+     "t": 7,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 7,
+     "rev": 0,
+     "promo": 0
+    },
+    "2026-05": {
+     "t": 55,
+     "paid": 30,
+     "sub": 30,
+     "single": 0,
+     "comp": 25,
+     "rev": 1203,
+     "promo": 0
+    },
+    "2026-06": {
+     "t": 400,
+     "paid": 380,
+     "sub": 363,
+     "single": 17,
+     "comp": 20,
+     "rev": 15203,
+     "promo": 0
+    },
+    "2026-07": {
+     "t": 147,
+     "paid": 141,
+     "sub": 55,
+     "single": 86,
+     "comp": 6,
+     "rev": 5900,
+     "promo": 0
+    },
+    "2026-08": {
+     "t": 329,
+     "paid": 250,
+     "sub": 21,
+     "single": 229,
+     "comp": 79,
+     "rev": 10753,
+     "promo": 2
+    },
+    "2026-09": {
+     "t": 216,
+     "paid": 158,
+     "sub": 1,
+     "single": 157,
+     "comp": 58,
+     "rev": 6457,
+     "promo": 18
+    }
+   }
+  },
+  "3601ABRLTLCLBPPCHRCSJRVVJLBBBDQCM": {
+   "id": "3601ABRLTLCLBPPCHRCSJRVVJLBBBDQCM",
+   "name": "Three Tall Women",
+   "first": "2027-05-07T19:00",
+   "last": "2027-05-23T14:00",
+   "perfs": 14,
+   "t": 727,
+   "comp": 70,
+   "paid": 657,
+   "sub": 496,
+   "single": 161,
+   "adu": 628,
+   "sen": 29,
+   "stu": 0,
+   "grp": 0,
+   "rev": 26687,
+   "disc": 63,
+   "discounted": 571,
+   "offers": {
+    "12ALHBQPQHVNTRMMBMPTSQKMSKQCDMCPT": {
+     "t": 3,
+     "disc": 63,
+     "rev": 72,
+     "face": 125,
+     "byMonth": {
+      "2026-07": 2,
+      "2026-08": 1
+     },
+     "types": {
+      "Senior": 2,
+      "Adult": 1
+     }
+    }
+   },
+   "byMonth": {
+    "2026-04": {
+     "t": 7,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 7,
+     "rev": 0,
+     "promo": 0
+    },
+    "2026-05": {
+     "t": 56,
+     "paid": 29,
+     "sub": 29,
+     "single": 0,
+     "comp": 27,
+     "rev": 1160,
+     "promo": 0
+    },
+    "2026-06": {
+     "t": 420,
+     "paid": 400,
+     "sub": 379,
+     "single": 21,
+     "comp": 20,
+     "rev": 16008,
+     "promo": 0
+    },
+    "2026-07": {
+     "t": 141,
+     "paid": 136,
+     "sub": 54,
+     "single": 82,
+     "comp": 5,
+     "rev": 5698,
+     "promo": 2
+    },
+    "2026-08": {
+     "t": 54,
+     "paid": 50,
+     "sub": 22,
+     "single": 28,
+     "comp": 4,
+     "rev": 2033,
+     "promo": 1
+    },
+    "2026-09": {
+     "t": 28,
+     "paid": 21,
+     "sub": 10,
+     "single": 11,
+     "comp": 7,
+     "rev": 852,
+     "promo": 0
+    },
+    "2026-10": {
+     "t": 21,
+     "paid": 21,
+     "sub": 2,
+     "single": 19,
+     "comp": 0,
+     "rev": 936,
+     "promo": 0
+    }
+   }
+  },
+  "3401ARKRNLBJKDJTKHBHRJBNHVDNSKPTR": {
+   "id": "3401ARKRNLBJKDJTKHBHRJBNHVDNSKPTR",
+   "name": "Seminar",
+   "first": "2027-04-02T19:00",
+   "last": "2027-04-18T14:00",
+   "perfs": 14,
+   "t": 682,
+   "comp": 67,
+   "paid": 615,
+   "sub": 502,
+   "single": 113,
+   "adu": 601,
+   "sen": 14,
+   "stu": 0,
+   "grp": 0,
+   "rev": 24836,
+   "disc": 41,
+   "discounted": 566,
+   "offers": {
+    "12ALHBQPQHVNTRMMBMPTSQKMSKQCDMCPT": {
+     "t": 2,
+     "disc": 41,
+     "rev": 47,
+     "face": 82,
+     "byMonth": {
+      "2026-07": 2
+     },
+     "types": {
+      "Senior": 2
+     }
+    }
+   },
+   "byMonth": {
+    "2026-04": {
+     "t": 7,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 7,
+     "rev": 0,
+     "promo": 0
+    },
+    "2026-05": {
+     "t": 58,
+     "paid": 31,
+     "sub": 31,
+     "single": 0,
+     "comp": 27,
+     "rev": 1240,
+     "promo": 0
+    },
+    "2026-06": {
+     "t": 415,
+     "paid": 397,
+     "sub": 381,
+     "single": 16,
+     "comp": 18,
+     "rev": 15885,
+     "promo": 0
+    },
+    "2026-07": {
+     "t": 122,
+     "paid": 117,
+     "sub": 56,
+     "single": 61,
+     "comp": 5,
+     "rev": 4839,
+     "promo": 2
+    },
+    "2026-08": {
+     "t": 43,
+     "paid": 36,
+     "sub": 22,
+     "single": 14,
+     "comp": 7,
+     "rev": 1448,
+     "promo": 0
+    },
+    "2026-09": {
+     "t": 24,
+     "paid": 21,
+     "sub": 10,
+     "single": 11,
+     "comp": 3,
+     "rev": 852,
+     "promo": 0
+    },
+    "2026-10": {
+     "t": 13,
+     "paid": 13,
+     "sub": 2,
+     "single": 11,
+     "comp": 0,
+     "rev": 572,
+     "promo": 0
+    }
+   }
+  },
+  "3801ASGTBTNRHGNPMLKSSVHJGBQVLLHNM": {
+   "id": "3801ASGTBTNRHGNPMLKSSVHJGBQVLLHNM",
+   "name": "25th Annual Putnam County Spelling Bee",
+   "first": "2027-06-11T19:00",
+   "last": "2027-07-03T19:00",
+   "perfs": 21,
+   "t": 759,
+   "comp": 72,
+   "paid": 687,
+   "sub": 505,
+   "single": 182,
+   "adu": 644,
+   "sen": 36,
+   "stu": 7,
+   "grp": 0,
+   "rev": 28393,
+   "disc": 0,
+   "discounted": 566,
+   "offers": {},
+   "byMonth": {
+    "2026-04": {
+     "t": 1,
+     "paid": 0,
+     "sub": 0,
+     "single": 0,
+     "comp": 1,
+     "rev": 0,
+     "promo": 0
+    },
+    "2026-05": {
+     "t": 70,
+     "paid": 33,
+     "sub": 33,
+     "single": 0,
+     "comp": 37,
+     "rev": 1336,
+     "promo": 0
+    },
+    "2026-06": {
+     "t": 423,
+     "paid": 401,
+     "sub": 385,
+     "single": 16,
+     "comp": 22,
+     "rev": 16064,
+     "promo": 0
+    },
+    "2026-07": {
+     "t": 172,
+     "paid": 165,
+     "sub": 53,
+     "single": 112,
+     "comp": 7,
+     "rev": 7291,
+     "promo": 0
+    },
+    "2026-08": {
+     "t": 48,
+     "paid": 43,
+     "sub": 22,
+     "single": 21,
+     "comp": 5,
+     "rev": 1727,
+     "promo": 0
+    },
+    "2026-09": {
+     "t": 28,
+     "paid": 28,
+     "sub": 10,
+     "single": 18,
+     "comp": 0,
+     "rev": 1188,
+     "promo": 0
+    },
+    "2026-10": {
+     "t": 17,
+     "paid": 17,
+     "sub": 2,
+     "single": 15,
+     "comp": 0,
+     "rev": 787,
+     "promo": 0
+    }
+   }
+  },
+  "5201APJKBKCCCNQQMCTQGVKMLVCGJKMGP": {
+   "id": "5201APJKBKCCCNQQMCTQGVKMLVCGJKMGP",
+   "name": "Staged Reading: Incognito",
+   "first": "2027-03-19T19:00",
+   "last": "2027-03-20T19:00",
+   "perfs": 3,
+   "t": 140,
+   "comp": 20,
+   "paid": 120,
+   "sub": 108,
+   "single": 12,
+   "adu": 120,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 2288,
+   "disc": 0,
+   "discounted": 30,
+   "offers": {},
+   "byMonth": {
+    "2026-05": {
+     "t": 25,
+     "paid": 22,
+     "sub": 22,
+     "single": 0,
+     "comp": 3,
+     "rev": 418,
+     "promo": 0
+    },
+    "2026-06": {
+     "t": 84,
+     "paid": 73,
+     "sub": 69,
+     "single": 4,
+     "comp": 11,
+     "rev": 1387,
+     "promo": 0
+    },
+    "2026-07": {
+     "t": 19,
+     "paid": 17,
+     "sub": 10,
+     "single": 7,
+     "comp": 2,
+     "rev": 335,
+     "promo": 0
+    },
+    "2026-08": {
+     "t": 7,
+     "paid": 5,
+     "sub": 5,
+     "single": 0,
+     "comp": 2,
+     "rev": 93,
+     "promo": 0
+    },
+    "2026-09": {
+     "t": 5,
+     "paid": 3,
+     "sub": 2,
+     "single": 1,
+     "comp": 2,
+     "rev": 55,
+     "promo": 0
+    }
+   }
+  },
+  "4803ANLNCLKVBLDCSBQGNKGGRVSKDHLCK": {
+   "id": "4803ANLNCLKVBLDCSBQGNKGGRVSKDHLCK",
+   "name": "Staged Reading: Nickel and Dimed",
+   "first": "2027-04-23T19:00",
+   "last": "2027-04-24T19:00",
+   "perfs": 3,
+   "t": 138,
+   "comp": 19,
+   "paid": 119,
+   "sub": 104,
+   "single": 15,
+   "adu": 119,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 2279,
+   "disc": 0,
+   "discounted": 30,
+   "offers": {},
+   "byMonth": {
+    "2026-05": {
+     "t": 26,
+     "paid": 22,
+     "sub": 22,
+     "single": 0,
+     "comp": 4,
+     "rev": 418,
+     "promo": 0
+    },
+    "2026-06": {
+     "t": 82,
+     "paid": 71,
+     "sub": 67,
+     "single": 4,
+     "comp": 11,
+     "rev": 1349,
+     "promo": 0
+    },
+    "2026-07": {
+     "t": 15,
+     "paid": 15,
+     "sub": 8,
+     "single": 7,
+     "comp": 0,
+     "rev": 299,
+     "promo": 0
+    },
+    "2026-08": {
+     "t": 10,
+     "paid": 8,
+     "sub": 5,
+     "single": 3,
+     "comp": 2,
+     "rev": 158,
+     "promo": 0
+    },
+    "2026-09": {
+     "t": 5,
+     "paid": 3,
+     "sub": 2,
+     "single": 1,
+     "comp": 2,
+     "rev": 55,
+     "promo": 0
+    }
+   }
+  },
+  "4801ANHPDLLRCQPPBDBQTRQJMPNKSLKPJ": {
+   "id": "4801ANHPDLLRCQPPBDBQTRQJMPNKSLKPJ",
+   "name": "Staged Reading: The Designated Mourner",
+   "first": "2026-08-07T19:00",
+   "last": "2026-08-08T19:00",
+   "perfs": 3,
+   "t": 254,
+   "comp": 34,
+   "paid": 220,
+   "sub": 99,
+   "single": 121,
+   "adu": 220,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 4292,
+   "disc": 0,
+   "discounted": 31,
+   "offers": {},
+   "byMonth": {
+    "2026-05": {
+     "t": 24,
+     "paid": 21,
+     "sub": 21,
+     "single": 0,
+     "comp": 3,
+     "rev": 399,
+     "promo": 0
+    },
+    "2026-06": {
+     "t": 82,
+     "paid": 71,
+     "sub": 67,
+     "single": 4,
+     "comp": 11,
+     "rev": 1349,
+     "promo": 0
+    },
+    "2026-07": {
+     "t": 61,
+     "paid": 58,
+     "sub": 10,
+     "single": 48,
+     "comp": 3,
+     "rev": 1180,
+     "promo": 0
+    },
+    "2026-08": {
+     "t": 87,
+     "paid": 70,
+     "sub": 1,
+     "single": 69,
+     "comp": 17,
+     "rev": 1364,
+     "promo": 0
+    }
+   }
+  },
+  "5001ABHHSRBTQRMRKVQTDCNNRTMMJHMGD": {
+   "id": "5001ABHHSRBTQRMRKVQTDCNNRTMMJHMGD",
+   "name": "Staged Reading: The Guys",
+   "first": "2027-01-29T19:00",
+   "last": "2027-01-30T19:00",
+   "perfs": 3,
+   "t": 150,
+   "comp": 22,
+   "paid": 128,
+   "sub": 106,
+   "single": 22,
+   "adu": 128,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 2464,
+   "disc": 0,
+   "discounted": 28,
+   "offers": {},
+   "byMonth": {
+    "2026-05": {
+     "t": 23,
+     "paid": 20,
+     "sub": 20,
+     "single": 0,
+     "comp": 3,
+     "rev": 380,
+     "promo": 0
+    },
+    "2026-06": {
+     "t": 86,
+     "paid": 73,
+     "sub": 69,
+     "single": 4,
+     "comp": 13,
+     "rev": 1387,
+     "promo": 0
+    },
+    "2026-07": {
+     "t": 21,
+     "paid": 19,
+     "sub": 10,
+     "single": 9,
+     "comp": 2,
+     "rev": 379,
+     "promo": 0
+    },
+    "2026-08": {
+     "t": 12,
+     "paid": 10,
+     "sub": 5,
+     "single": 5,
+     "comp": 2,
+     "rev": 200,
+     "promo": 0
+    },
+    "2026-09": {
+     "t": 5,
+     "paid": 3,
+     "sub": 2,
+     "single": 1,
+     "comp": 2,
+     "rev": 55,
+     "promo": 0
+    },
+    "2026-10": {
+     "t": 3,
+     "paid": 3,
+     "sub": 0,
+     "single": 3,
+     "comp": 0,
+     "rev": 63,
+     "promo": 0
+    }
+   }
+  },
+  "4802APDVRHTDDNVJPCTVDVTCSNCCMBLPJ": {
+   "id": "4802APDVRHTDDNVJPCTVDVTCSNCCMBLPJ",
+   "name": "Staged Reading: The Vertical Hour",
+   "first": "2026-09-18T19:00",
+   "last": "2026-09-19T19:00",
+   "perfs": 3,
+   "t": 208,
+   "comp": 42,
+   "paid": 166,
+   "sub": 98,
+   "single": 68,
+   "adu": 166,
+   "sen": 0,
+   "stu": 0,
+   "grp": 0,
+   "rev": 3248,
+   "disc": 20,
+   "discounted": 24,
+   "offers": {
+    "12ALHBQPQHVNTRMMBMPTSQKMSKQCDMCPT": {
+     "t": 2,
+     "disc": 20,
+     "rev": 26,
+     "face": 40,
+     "byMonth": {
+      "2026-09": 2
+     },
+     "types": {
+      "Adult": 2
+     }
+    }
+   },
+   "byMonth": {
+    "2026-05": {
+     "t": 19,
+     "paid": 19,
+     "sub": 19,
+     "single": 0,
+     "comp": 0,
+     "rev": 361,
+     "promo": 0
+    },
+    "2026-06": {
+     "t": 78,
+     "paid": 67,
+     "sub": 63,
+     "single": 4,
+     "comp": 11,
+     "rev": 1273,
+     "promo": 0
+    },
+    "2026-07": {
+     "t": 17,
+     "paid": 15,
+     "sub": 9,
+     "single": 6,
+     "comp": 2,
+     "rev": 301,
+     "promo": 0
+    },
+    "2026-08": {
+     "t": 19,
+     "paid": 12,
+     "sub": 5,
+     "single": 7,
+     "comp": 7,
+     "rev": 240,
+     "promo": 0
+    },
+    "2026-09": {
+     "t": 75,
+     "paid": 53,
+     "sub": 2,
+     "single": 51,
+     "comp": 22,
+     "rev": 1073,
+     "promo": 2
+    }
+   }
+  },
+  "4601AJPCPMGTNKKCGHTVKNTDGDBLJMHTJ": {
+   "id": "4601AJPCPMGTNKKCGHTVKNTDGDBLJMHTJ",
+   "name": "Forever Plaid",
+   "first": "2027-02-12T19:00",
+   "last": "2027-03-14T14:00",
+   "perfs": 28,
+   "t": 606,
+   "comp": 32,
+   "paid": 574,
+   "sub": 306,
+   "single": 268,
+   "adu": 523,
+   "sen": 0,
+   "stu": 4,
+   "grp": 47,
+   "rev": 32957,
+   "disc": 110,
+   "discounted": 7,
+   "offers": {
+    "12ALHBQPQHVNTRMMBMPTSQKMSKQCDMCPT": {
+     "t": 4,
+     "disc": 110,
+     "rev": 116,
+     "face": 220,
+     "byMonth": {
+      "2026-10": 4
+     },
+     "types": {
+      "Adult": 4
+     }
+    }
+   },
+   "byMonth": {
+    "2026-05": {
+     "t": 63,
+     "paid": 49,
+     "sub": 49,
+     "single": 0,
+     "comp": 14,
+     "rev": 2830,
+     "promo": 0
+    },
+    "2026-06": {
+     "t": 246,
+     "paid": 237,
+     "sub": 217,
+     "single": 20,
+     "comp": 9,
+     "rev": 13699,
+     "promo": 0
+    },
+    "2026-07": {
+     "t": 183,
+     "paid": 179,
+     "sub": 27,
+     "single": 152,
+     "comp": 4,
+     "rev": 10306,
+     "promo": 0
+    },
+    "2026-08": {
+     "t": 45,
+     "paid": 44,
+     "sub": 6,
+     "single": 38,
+     "comp": 1,
+     "rev": 2409,
+     "promo": 0
+    },
+    "2026-09": {
+     "t": 37,
+     "paid": 33,
+     "sub": 6,
+     "single": 27,
+     "comp": 4,
+     "rev": 1963,
+     "promo": 0
+    },
+    "2026-10": {
+     "t": 32,
+     "paid": 32,
+     "sub": 1,
+     "single": 31,
+     "comp": 0,
+     "rev": 1750,
+     "promo": 4
+    }
+   }
+  },
+  "4401APLLPBSHLDJVTLGBDQTQBHJDJSHCM": {
+   "id": "4401APLLPBSHLDJVTLGBDQTQBHJDJSHCM",
+   "name": "Million Dollar Quartet Christmas",
+   "first": "2026-11-20T19:00",
+   "last": "2026-12-20T14:00",
+   "perfs": 25,
+   "t": 1155,
+   "comp": 68,
+   "paid": 1087,
+   "sub": 226,
+   "single": 861,
+   "adu": 997,
+   "sen": 0,
+   "stu": 25,
+   "grp": 65,
+   "rev": 62171,
+   "disc": 368,
+   "discounted": 16,
+   "offers": {
+    "12ALHBQPQHVNTRMMBMPTSQKMSKQCDMCPT": {
+     "t": 13,
+     "disc": 368,
+     "rev": 401,
+     "face": 735,
+     "byMonth": {
+      "2026-07": 7,
+      "2026-10": 6
+     },
+     "types": {
+      "Adult": 13
+     }
+    }
+   },
+   "byMonth": {
+    "2026-05": {
+     "t": 62,
+     "paid": 40,
+     "sub": 38,
+     "single": 2,
+     "comp": 22,
+     "rev": 2331,
+     "promo": 0
+    },
+    "2026-06": {
+     "t": 170,
+     "paid": 160,
+     "sub": 157,
+     "single": 3,
+     "comp": 10,
+     "rev": 9240,
+     "promo": 0
+    },
+    "2026-07": {
+     "t": 404,
+     "paid": 381,
+     "sub": 22,
+     "single": 359,
+     "comp": 23,
+     "rev": 21769,
+     "promo": 7
+    },
+    "2026-08": {
+     "t": 111,
+     "paid": 110,
+     "sub": 4,
+     "single": 106,
+     "comp": 1,
+     "rev": 6360,
+     "promo": 0
+    },
+    "2026-09": {
+     "t": 208,
+     "paid": 203,
+     "sub": 4,
+     "single": 199,
+     "comp": 5,
+     "rev": 11561,
+     "promo": 0
+    },
+    "2026-10": {
+     "t": 200,
+     "paid": 193,
+     "sub": 1,
+     "single": 192,
+     "comp": 7,
+     "rev": 10910,
+     "promo": 6
+    }
+   }
+  },
+  "4001APBPRCSHVVMHTCBMSPSJRNDMCHHLV": {
+   "id": "4001APBPRCSHVVMHTCBMSPSJRNDMCHHLV",
+   "name": "Finding Nemo",
+   "first": "2026-07-10T19:00",
+   "last": "2026-07-19T19:00",
+   "perfs": 12,
+   "t": 999,
+   "comp": 164,
+   "paid": 835,
+   "sub": 40,
+   "single": 795,
+   "adu": 631,
+   "sen": 0,
+   "stu": 204,
+   "grp": 0,
+   "rev": 22009,
+   "disc": 337,
+   "discounted": 30,
+   "offers": {
+    "12ALHBQPQHVNTRMMBMPTSQKMSKQCDMCPT": {
+     "t": 24,
+     "disc": 277,
+     "rev": 349,
+     "face": 554,
+     "byMonth": {
+      "2026-06": 15,
+      "2026-07": 9
+     },
+     "types": {
+      "Adult": 16,
+      "Student w/ID": 8
+     }
+    },
+    "20ADCJVPDTKQQBHPGJNSJCNPBPTCCRSND": {
+     "t": 6,
+     "disc": 60,
+     "rev": 103,
+     "face": 145,
+     "byMonth": {
+      "2026-07": 6
+     },
+     "types": {
+      "Adult": 5,
+      "Student w/ID": 1
+     }
+    }
+   },
+   "byMonth": {
+    "2026-05": {
+     "t": 30,
+     "paid": 18,
+     "sub": 18,
+     "single": 0,
+     "comp": 12,
+     "rev": 466,
+     "promo": 0
+    },
+    "2026-06": {
+     "t": 398,
+     "paid": 354,
+     "sub": 21,
+     "single": 333,
+     "comp": 44,
+     "rev": 9428,
+     "promo": 15
+    },
+    "2026-07": {
+     "t": 571,
+     "paid": 463,
+     "sub": 1,
+     "single": 462,
+     "comp": 108,
+     "rev": 12115,
+     "promo": 15
+    }
+   }
+  },
+  "4201ASVGBHHRTVLQBSRVKDQCKNHHDCTSJ": {
+   "id": "4201ASVGBHHRTVLQBSRVKDQCKNHHDCTSJ",
+   "name": "Number the Stars",
+   "first": "2027-01-15T19:00",
+   "last": "2027-01-24T14:00",
+   "perfs": 9,
+   "t": 182,
+   "comp": 21,
+   "paid": 161,
+   "sub": 51,
+   "single": 110,
+   "adu": 150,
+   "sen": 0,
+   "stu": 11,
+   "grp": 0,
+   "rev": 4101,
+   "disc": 0,
+   "discounted": 0,
+   "offers": {},
+   "byMonth": {
+    "2026-05": {
+     "t": 27,
+     "paid": 12,
+     "sub": 12,
+     "single": 0,
+     "comp": 15,
+     "rev": 296,
+     "promo": 0
+    },
+    "2026-06": {
+     "t": 47,
+     "paid": 46,
+     "sub": 37,
+     "single": 9,
+     "comp": 1,
+     "rev": 1124,
+     "promo": 0
+    },
+    "2026-07": {
+     "t": 39,
+     "paid": 37,
+     "sub": 1,
+     "single": 36,
+     "comp": 2,
+     "rev": 960,
+     "promo": 0
+    },
+    "2026-08": {
+     "t": 24,
+     "paid": 23,
+     "sub": 0,
+     "single": 23,
+     "comp": 1,
+     "rev": 589,
+     "promo": 0
+    },
+    "2026-09": {
+     "t": 14,
+     "paid": 12,
+     "sub": 1,
+     "single": 11,
+     "comp": 2,
+     "rev": 305,
+     "promo": 0
+    },
+    "2026-10": {
+     "t": 31,
+     "paid": 31,
+     "sub": 0,
+     "single": 31,
+     "comp": 0,
+     "rev": 827,
+     "promo": 0
+    }
+   }
+  }
+ },
+ "subsByMonth": {
+  "2024-05": {},
+  "2024-06": {},
+  "2024-07": {},
+  "2024-08": {},
+  "2024-09": {},
+  "2024-10": {},
+  "2024-11": {},
+  "2024-12": {},
+  "2025-01": {},
+  "2025-02": {},
+  "2025-03": {},
+  "2025-04": {},
+  "2025-05": {
+   "Mainstage Season|Mainstage Price": [
+    4,
+    80000
+   ],
+   "UBU Season|UBU Pricing": [
+    1,
+    9500
+   ]
+  },
+  "2025-06": {
+   "Mainstage Season|Comp": [
+    33,
+    0
+   ],
+   "Mainstage Season|Mainstage Price": [
+    268,
+    5360000
+   ],
+   "UBU Season|UBU Pricing": [
+    45,
+    427500
+   ],
+   "UBU Season|Subscription Comp": [
+    7,
+    0
+   ]
+  },
+  "2025-07": {
+   "Mainstage Season|Mainstage Price": [
+    181,
+    3620000
+   ],
+   "UBU Season|UBU Pricing": [
+    33,
+    313500
+   ],
+   "Mainstage Season|Comp": [
+    6,
+    0
+   ]
+  },
+  "2025-08": {
+   "UBU Season|UBU Pricing": [
+    1,
+    9500
+   ],
+   "Mainstage Season|Mainstage Price": [
+    39,
+    780000
+   ]
+  },
+  "2025-09": {
+   "Mainstage Season|Mainstage Price": [
+    6,
+    120000
+   ],
+   "Mini-Season 4 Pack|Mainstage Price": [
+    4,
+    64000
+   ]
+  },
+  "2025-10": {
+   "Mini-Season 4 Pack|Mainstage Price": [
+    5,
+    80000
+   ]
+  },
+  "2025-11": {},
+  "2025-12": {},
+  "2026-01": {
+   "Mini-Season 4 Pack|Mainstage Price": [
+    4,
+    64000
+   ]
+  },
+  "2026-02": {},
+  "2026-03": {},
+  "2026-04": {},
+  "2026-05": {
+   "Mainstage Season 26/27|Comp": [
+    25,
+    0
+   ],
+   "UBU Season - 26/27|UBU Pricing": [
+    22,
+    209000
+   ],
+   "Mainstage Season 26/27|Mainstage Price": [
+    31,
+    620000
+   ],
+   "UBU Season - 26/27|Subscription Comp": [
+    2,
+    0
+   ]
+  },
+  "2026-06": {
+   "Mainstage Season 26/27|Mainstage Price": [
+    397,
+    7940000
+   ],
+   "Mainstage Season 26/27|Comp": [
+    17,
+    0
+   ],
+   "UBU Season - 26/27|UBU Pricing": [
+    73,
+    693500
+   ],
+   "UBU Season - 26/27|Subscription Comp": [
+    3,
+    0
+   ]
+  },
+  "2026-07": {
+   "Mainstage Season 26/27|Mainstage Price": [
+    97,
+    1940000
+   ],
+   "UBU Season - 26/27|UBU Pricing": [
+    8,
+    76000
+   ],
+   "Mainstage Season 26/27|Comp": [
+    2,
+    0
+   ]
+  },
+  "2026-08": {
+   "Mainstage Season 26/27|Mainstage Price": [
+    43,
+    860000
+   ],
+   "UBU Season - 26/27|UBU Pricing": [
+    4,
+    38000
+   ],
+   "Mainstage Season 26/27|Comp": [
+    2,
+    0
+   ]
+  },
+  "2026-09": {
+   "Mainstage Season 26/27|Mainstage Price": [
+    3,
+    60000
+   ],
+   "Flex Subscription, 4 Mainstage Season 26/27|Mainstage Price": [
+    13,
+    208000
+   ]
+  },
+  "2026-10": {
+   "Flex Subscription, 4 Mainstage Season 26/27|Mainstage Price": [
+    6,
+    96000
+   ],
+   "Flex Subscription, 3 Mainstage Season 26/27|Mainstage Price": [
+    1,
+    12000
+   ]
+  }
+ }
+}
